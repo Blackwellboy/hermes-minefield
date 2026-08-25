@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - name: Check out hermes-minefield
+        uses: actions/checkout@v4
+
+      - name: Check out Model Serving Minefield
+        uses: actions/checkout@v4
+        with:
+          repository: Blackwellboy/model-serving-minefield
+          path: _deps/model-serving-minefield
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./_deps/model-serving-minefield
+          python -m pip install pytest PyYAML
+          python -m pip install -e . --no-deps
+
+      - name: Compile
+        run: python -m compileall -q hermes_minefield tests
+
+      - name: Test
+        run: pytest -q
