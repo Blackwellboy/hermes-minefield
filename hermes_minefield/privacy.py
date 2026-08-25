@@ -14,6 +14,9 @@ _SECRET_PATTERNS = [
     re.compile(r"(?i)github_pat_[a-z0-9_]{20,}"),
     re.compile(r"(?i)sk-[a-z0-9]{20,}"),
     re.compile(r"(?i)ssh-rsa\s+[a-z0-9+/=]+"),
+    # Future bank-tool plaintext shapes (groundwork; bank access not enabled)
+    re.compile(r"(?i)\b(pin|mfa|otp|sms[_-]?code|cvv|security[_-]?answer)\s*[:=]\s*([^\s,;]+)"),
+    re.compile(r"(?i)\b(bsb|account[_-]?number|card[_-]?number)\s*[:=]\s*([0-9\-\s]{4,})"),
 ]
 _ABS_HOME = re.compile(r"(?i)(/home/|/Users/|C:\\Users\\)[^\s\"']+")
 _IP_LIKE = re.compile(
@@ -74,6 +77,20 @@ def sanitize_mapping(data: Mapping[str, Any], *, drop_keys: Optional[set[str]] =
         "set-cookie",
         "access_token",
         "refresh_token",
+        # Future bank-tool fields (groundwork; bank access not enabled yet)
+        "pin",
+        "mfa",
+        "mfa_code",
+        "otp",
+        "one_time_password",
+        "sms_code",
+        "security_answer",
+        "recovery_code",
+        "bsb",
+        "account_number",
+        "card_number",
+        "cvv",
+        "iban",
     }
     out: dict[str, Any] = {}
     for k, v in data.items():
