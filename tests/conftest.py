@@ -7,12 +7,19 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-MF = Path("/home/lagzilla/worktrees/minefield-phase0-verify")
 
-# Prefer sealed Phase 0 Minefield source
-for p in (str(ROOT), str(MF)):
-    if p not in sys.path:
-        sys.path.insert(0, p)
+# Keep the plugin source importable in editable/local test runs. Minefield itself
+# should come from the installed dependency; developers can optionally point at
+# a source checkout without baking a machine-specific path into the repository.
+paths = [ROOT]
+minefield_source = os.environ.get("MINEFIELD_SOURCE")
+if minefield_source:
+    paths.append(Path(minefield_source).expanduser().resolve())
+
+for path in paths:
+    value = str(path)
+    if value not in sys.path:
+        sys.path.insert(0, value)
 
 
 @pytest.fixture()
