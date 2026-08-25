@@ -49,20 +49,32 @@ def run_doctor(
     if result.request_budget is not None and result.requests_executed > result.request_budget:
         raise RuntimeError("HARD_BUDGET_VIOLATION")
     summary = summarize(result)
+    findings = [
+        {
+            "level": getattr(f, "level", ""),
+            "code": getattr(f, "code", ""),
+            "title": getattr(f, "title", ""),
+            "detail": getattr(f, "detail", None),
+            "traps": list(getattr(f, "traps", ()) or ()),
+        }
+        for f in (getattr(summary, "findings", None) or [])
+    ]
+    from ..render import counts_from_findings
+
+    clean = int(getattr(summary, "clean_count", None) or 0)
+    problem = int(getattr(summary, "problem_count", None) or 0)
+    inconclusive = int(getattr(summary, "inconclusive_count", None) or 0)
+    derived = counts_from_findings(findings)
+    if (clean, problem, inconclusive) == (0, 0, 0) and derived != (0, 0, 0):
+        clean, problem, inconclusive = derived
     summary_dict = {
-        "clean": getattr(summary, "clean", 0),
-        "problem": getattr(summary, "problem", 0),
-        "inconclusive": getattr(summary, "inconclusive", 0),
-        "findings": [
-            {
-                "level": getattr(f, "level", ""),
-                "code": getattr(f, "code", ""),
-                "title": getattr(f, "title", ""),
-                "detail": getattr(f, "detail", None),
-                "traps": list(getattr(f, "traps", ()) or ()),
-            }
-            for f in (getattr(summary, "findings", None) or [])
-        ],
+        "clean": clean,
+        "problem": problem,
+        "inconclusive": inconclusive,
+        "clean_count": clean,
+        "problem_count": problem,
+        "inconclusive_count": inconclusive,
+        "findings": findings,
     }
     text = render_doctor_summary(summary_dict, requests=result.requests_executed)
     if info.known_concurrency == 1:

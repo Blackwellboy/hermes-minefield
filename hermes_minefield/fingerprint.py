@@ -69,3 +69,21 @@ def build_fingerprint(
             components[k] = v
     key = _h(components)
     return Fingerprint(key=key, components=components)
+
+
+def fingerprint_for_hermes_target(
+    *,
+    model: Optional[str],
+    base_url: str,
+    reasoning_mode: str = "from_config",
+) -> Fingerprint:
+    """Shared Lite-cache fingerprint for status + check.
+
+    Must stay identical across commands so status can see cached Lite results.
+    Uses config-resolved model/base_url only (no live detect) — cheap and stable.
+    """
+    return build_fingerprint(
+        model=model,
+        base_url=base_url,
+        reasoning_mode=reasoning_mode,
+    )

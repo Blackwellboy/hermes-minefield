@@ -7,8 +7,8 @@ from typing import Any, Optional
 
 from ..cache import CacheEntry, get_entry, put_entry
 from ..config import DEFAULT_LITE_MAX_REQUESTS, load_plugin_config
-from ..fingerprint import build_fingerprint
-from ..render import render_lite_summary
+from ..fingerprint import fingerprint_for_hermes_target
+from ..render import counts_from_findings, render_lite_summary
 from ..target import resolve_target
 
 
@@ -32,11 +32,8 @@ def run_check(
         raise ValueError("max_requests must be >= 0")
 
     target = resolve_target(base_url=base_url, model=model)
-    fp = build_fingerprint(
-        model=target.model,
-        base_url=target.base_url,
-        reasoning_mode="from_config",
-    )
+    # Same key as status — do not omit reasoning_mode or cache lookups diverge.
+    fp = fingerprint_for_hermes_target(model=target.model, base_url=target.base_url)
     cached = get_entry(fp.key)
     if cached and not force:
         return {
@@ -65,21 +62,32 @@ def run_check(
     if result.request_budget is not None:
         assert result.requests_executed <= result.request_budget
     summary = summarize(result)
+    findings = [
+        {
+            "level": getattr(f, "level", None) or (f.get("level") if isinstance(f, dict) else ""),
+            "code": getattr(f, "code", None) or (f.get("code") if isinstance(f, dict) else ""),
+            "title": getattr(f, "title", None) or (f.get("title") if isinstance(f, dict) else ""),
+            "detail": getattr(f, "detail", None) or (f.get("detail") if isinstance(f, dict) else ""),
+            "traps": list(getattr(f, "traps", ()) or (f.get("traps") if isinstance(f, dict) else [])),
+        }
+        for f in (getattr(summary, "findings", None) or [])
+    ]
+    # Minefield Summary uses clean_count/problem_count/… (not clean/problem).
+    clean = int(getattr(summary, "clean_count", None) or 0)
+    problem = int(getattr(summary, "problem_count", None) or 0)
+    inconclusive = int(getattr(summary, "inconclusive_count", None) or 0)
+    derived = counts_from_findings(findings)
+    if (clean, problem, inconclusive) == (0, 0, 0) and derived != (0, 0, 0):
+        clean, problem, inconclusive = derived
     summary_dict = {
-        "clean": getattr(summary, "clean", 0),
-        "problem": getattr(summary, "problem", 0),
-        "inconclusive": getattr(summary, "inconclusive", 0),
-        "skipped": getattr(summary, "skipped", 0),
-        "findings": [
-            {
-                "level": getattr(f, "level", None) or (f.get("level") if isinstance(f, dict) else ""),
-                "code": getattr(f, "code", None) or (f.get("code") if isinstance(f, dict) else ""),
-                "title": getattr(f, "title", None) or (f.get("title") if isinstance(f, dict) else ""),
-                "detail": getattr(f, "detail", None) or (f.get("detail") if isinstance(f, dict) else ""),
-                "traps": list(getattr(f, "traps", ()) or (f.get("traps") if isinstance(f, dict) else [])),
-            }
-            for f in (getattr(summary, "findings", None) or [])
-        ],
+        "clean": clean,
+        "problem": problem,
+        "inconclusive": inconclusive,
+        "clean_count": clean,
+        "problem_count": problem,
+        "inconclusive_count": inconclusive,
+        "skipped": int(getattr(summary, "skipped_probe_count", None) or 0),
+        "findings": findings,
         "requests_made": result.requests_executed,
     }
     put_entry(

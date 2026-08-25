@@ -7,9 +7,9 @@ from typing import Any, Optional
 
 from ..cache import get_entry, load_cache
 from ..config import load_plugin_config
-from ..fingerprint import build_fingerprint
+from ..fingerprint import fingerprint_for_hermes_target
 from ..recorder.store import get_recorder
-from ..render import render_status
+from ..render import extract_summary_counts, render_status
 from ..target import resolve_target
 
 
@@ -20,15 +20,26 @@ def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -
     last_summary = None
     try:
         target = resolve_target(base_url=base_url, model=model)
-        fp = build_fingerprint(model=target.model, base_url=target.base_url)
+        # Must match check()'s Lite-cache key (includes reasoning_mode=from_config).
+        fp = fingerprint_for_hermes_target(model=target.model, base_url=target.base_url)
         fp_short = fp.short()
         entry = get_entry(fp.key)
         if entry:
             age_s = time.time() - entry.checked_at
             cache_age = f"{age_s/60:.1f}m ago ({entry.mode})"
+            _, clean, problem, inconclusive = extract_summary_counts(entry.summary)
+            # Prefer repaired counts from findings when legacy cache stored zeros.
+            if (entry.clean, entry.problem, entry.inconclusive) == (0, 0, 0) and (
+                clean,
+                problem,
+                inconclusive,
+            ) != (0, 0, 0):
+                c, p, i = clean, problem, inconclusive
+            else:
+                c, p, i = entry.clean, entry.problem, entry.inconclusive
             last_summary = (
-                f"  clean={entry.clean} problem={entry.problem} "
-                f"inconclusive={entry.inconclusive} requests={entry.requests_executed}"
+                f"  clean={c} problem={p} "
+                f"inconclusive={i} requests={entry.requests_executed}"
             )
     except Exception as e:
         cache_age = f"target unresolved: {type(e).__name__}"
@@ -36,6 +47,7 @@ def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -
     stats = get_recorder().stats()
     text = render_status(
         fingerprint_short=fp_short,
+        fingerprint_kind="lite-cache (config-resolved)",
         cache_age=cache_age,
         recorder_stats={
             "events_in_memory": stats.events_in_memory,

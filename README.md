@@ -6,7 +6,7 @@ Minefield stays framework-neutral. This plugin is the Hermes-specific adapter.
 
 ## Commands
 
-| CLI | Slash | Purpose |
+| CLI (Bash / terminal) | Slash (inside Hermes chat) | Purpose |
 |-----|-------|---------|
 | `hermes minefield check` | `/minefield check` | Lite preflight (≤5 requests) |
 | `hermes minefield doctor` | `/minefield doctor` | Full Doctor (explicit; single-slot guard) |
@@ -15,6 +15,8 @@ Minefield stays framework-neutral. This plugin is the Hermes-specific adapter.
 | `hermes minefield contribute` | `/minefield contribute` | Sanitized candidate / issue draft |
 | `hermes minefield issues` | `/minefield issues` | Local incidents + linked GitHub status |
 | `hermes minefield status` | `/minefield status` | Fingerprint / cache / recorder health |
+
+**Slash vs Bash:** `/minefield wtf` is a Hermes interactive slash command (type it in a Hermes session). From a normal shell use `hermes minefield wtf` — bare `/minefield` is not a Bash command.
 
 ## Install (opt-in)
 
