@@ -17,8 +17,9 @@ def run_doctor(
     max_requests: Optional[int] = None,
     detect: bool = True,
 ) -> dict[str, Any]:
-    from minefield.api import plan_checks, run_checks, summarize
-
+    # Resolve target + concurrency guard BEFORE importing Minefield so a
+    # blocked single-slot run never depends on minefield being importable,
+    # and never issues Doctor requests.
     target = resolve_target(base_url=base_url, model=model)
     info = probe_concurrency(target.base_url)
     if requires_doctor_confirm(info) and not yes:
@@ -32,7 +33,10 @@ def run_doctor(
                 "detail": info.detail,
             },
             "text": doctor_guard_message(info),
+            "requests_executed": 0,
         }
+
+    from minefield.api import plan_checks, run_checks, summarize
 
     plan = plan_checks(
         base_url=target.base_url,

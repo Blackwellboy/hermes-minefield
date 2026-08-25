@@ -10,6 +10,7 @@ from ..incident.store import load_incident, list_incidents
 from ..issues.dedupe import search_local
 from ..issues.draft import build_issue_draft, save_draft
 from ..issues.github_client import submit_issue
+from ..issues.routing import resolve_contribute_target
 from ..target import resolve_target
 
 
@@ -23,6 +24,7 @@ def run_contribute(
     approve: bool = False,
     user_reply: Optional[str] = None,
     from_model: bool = False,
+    model_suggested_repo: Optional[str] = None,
     dry_run: bool = True,
 ) -> dict[str, Any]:
     cfg = load_plugin_config()
@@ -32,7 +34,6 @@ def run_contribute(
     if not art:
         rows = list_incidents(limit=1)
         if rows:
-            # index rows may be thin — try full load
             art = load_incident(rows[0].get("incident_id", "")) or rows[0]
     if not art:
         return {
@@ -58,7 +59,6 @@ def run_contribute(
         f"  (selected: {packet.kind})",
     ]
 
-    # Dedupe against local incidents
     hits = search_local(
         str(art.get("observed_symptom") or packet.title),
         known=list_incidents(limit=50),
@@ -79,7 +79,40 @@ def run_contribute(
     }
 
     if github:
-        repo = target_repo or cfg.repo_allowlist[0]
+        route = resolve_contribute_target(
+            artifact=art,
+            kind=kind or packet.kind,
+            explicit_repo=target_repo,
+            user_selected_repo=user_selected_repo or bool(target_repo),
+            allowlist=cfg.repo_allowlist,
+            model_suggested_repo=model_suggested_repo,
+        )
+        result["recommended_repo"] = route.get("recommended_repo")
+        result["user_selection_required"] = route.get("user_selection_required")
+        result["routing_reason"] = route.get("reason")
+
+        if not route.get("can_draft"):
+            lines.extend(
+                [
+                    "",
+                    "GitHub target: NOT AUTOMATICALLY SELECTED",
+                    f"  reason: {route.get('reason')}",
+                    "  TARGET_REPO_RECOMMENDED=NONE",
+                    "  USER_SELECTION_REQUIRED=YES",
+                    "",
+                    "Pick an allowlisted target explicitly, e.g.:",
+                    "  /minefield contribute --github --repo NousResearch/hermes-agent",
+                    "  /minefield contribute --github --repo ggerganov/llama.cpp",
+                    "  /minefield contribute --github --repo Blackwellboy/model-serving-minefield",
+                    "",
+                    "(Recommended repo != approval. No automatic upload.)",
+                ]
+            )
+            result["target_repo"] = None
+            result["text"] = "\n".join(lines)
+            return result
+
+        repo = route["target_repo"]
         try:
             env = {}
             try:
@@ -93,9 +126,11 @@ def run_contribute(
                 [
                     "",
                     "GitHub issue draft (NOT SUBMITTED):",
-                    f"  target: {repo}",
-                    f"  title:  {draft.title}",
-                    f"  draft:  {dpath}",
+                    f"  recommended: {route.get('recommended_repo') or '(none)'}",
+                    f"  target:      {repo}",
+                    f"  routing:     {route.get('reason')}",
+                    f"  title:       {draft.title}",
+                    f"  draft:       {dpath}",
                     "",
                     "----- EXACT ISSUE BODY PREVIEW -----",
                     draft.body,
@@ -103,6 +138,7 @@ def run_contribute(
                     "",
                     f"Submit this issue to {repo}? [y/N]",
                     "(automatic upload is disabled; model approval is rejected)",
+                    "(recommendation is not approval)",
                 ]
             )
             result["draft_path"] = str(dpath)
@@ -115,7 +151,9 @@ def run_contribute(
                     title=draft.title,
                     body=draft.body,
                     allowlist=cfg.repo_allowlist,
-                    user_selected_repo=user_selected_repo or bool(target_repo),
+                    user_selected_repo=bool(route.get("user_selected"))
+                    or user_selected_repo
+                    or bool(target_repo),
                     user_reply=user_reply,
                     cli_approve=approve,
                     from_model=from_model,
@@ -128,7 +166,9 @@ def run_contribute(
                     "dry_run": sub.dry_run,
                 }
                 if sub.submitted:
-                    lines.append(f"\nSubmit result: {'DRY-RUN OK' if sub.dry_run else 'SENT'} {sub.url}")
+                    lines.append(
+                        f"\nSubmit result: {'DRY-RUN OK' if sub.dry_run else 'SENT'} {sub.url}"
+                    )
                 else:
                     lines.append(f"\nSubmit blocked/failed: {sub.error}")
         except Exception as e:
