@@ -91,6 +91,10 @@ def render_incident(artifact: IncidentArtifact) -> str:
     exec_total = artifact.actual_execution_counts.get("total_executed", 0)
     prep_total = artifact.actual_execution_counts.get("total_prepared", 0)
     equiv = artifact.repeated_call_counts.get("dominant_equivalent", 0)
+    dominant_tool = artifact.actual_execution_counts.get("dominant_tool") or ""
+    # NO_PROGRESS_STREAK approximates dominant equivalent repeats for tool-loop
+    # incidents (recorder does not yet emit Hermes guardrail warn/block counts).
+    no_progress_streak = equiv
     trap_line = "NO"
     if artifact.known_trap_matches:
         m = artifact.known_trap_matches[0]
@@ -103,6 +107,12 @@ def render_incident(artifact: IncidentArtifact) -> str:
         f"Observed:",
         f"  {artifact.observed_symptom}",
         "",
+        f"ACTUAL_EXECUTIONS={exec_total}",
+        f"REPEATED_EQUIVALENT_CALLS={equiv}",
+        f"DOMINANT_TOOL={dominant_tool or 'unknown'}",
+        f"NO_PROGRESS_STREAK={no_progress_streak}",
+        f"GUARD_WARNINGS=unknown",
+        f"GUARD_BLOCKS=unknown",
         f"Actual executions: {exec_total}",
         f"Preparations:      {prep_total}",
         f"Repeated equivalent calls: {equiv}",
