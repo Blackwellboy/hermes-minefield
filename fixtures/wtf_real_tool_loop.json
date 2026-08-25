@@ -1,0 +1,639 @@
+{
+  "name": "real_tool_loop",
+  "description": "Many PREPARED + many EXECUTED with equivalent fingerprints",
+  "events": [
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 0.0
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 1.2
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 2.4
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 3.5999999999999996
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 4.8
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 6.0
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 7.199999999999999
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 8.4
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 9.6
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 10.799999999999999
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 12.0
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 13.2
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 14.399999999999999
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 15.6
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 16.8
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 18.0
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 19.2
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 20.4
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 21.599999999999998
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 22.8
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 24.0
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 25.2
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 26.4
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 27.599999999999998
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 28.799999999999997
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 30.0
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 31.2
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 32.4
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 33.6
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 34.8
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 36.0
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 37.199999999999996
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 38.4
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 39.6
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 40.8
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 42.0
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 43.199999999999996
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 44.4
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 45.6
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 46.8
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 48.0
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 49.199999999999996
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 50.4
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 51.6
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 52.8
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 54.0
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 55.199999999999996
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 56.4
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 57.599999999999994
+    },
+    {
+      "type": "tool.prepared",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 58.8
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 0.5,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 1.7,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 2.9,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 4.1,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 5.3,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 6.5,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 7.699999999999999,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 8.9,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 10.1,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 11.299999999999999,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 12.5,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 13.7,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 14.899999999999999,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 16.1,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 17.3,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 18.5,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 19.7,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 20.9,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 22.099999999999998,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 23.3,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 24.5,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 25.7,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 26.9,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 28.099999999999998,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 29.299999999999997,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 30.5,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 31.7,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 32.9,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 34.1,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 35.3,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 36.5,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 37.699999999999996,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 38.9,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 40.1,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 41.3,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 42.5,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 43.699999999999996,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 44.9,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 46.1,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 47.3,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 48.5,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "samefp",
+      "offset_s": 49.699999999999996,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "fp42",
+      "offset_s": 50.9,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "fp43",
+      "offset_s": 52.1,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "fp44",
+      "offset_s": 53.3,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "fp45",
+      "offset_s": 54.5,
+      "success": true
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "search_files",
+      "tool_arg_fingerprint": "fp46",
+      "offset_s": 55.699999999999996,
+      "success": true
+    }
+  ],
+  "expected_classification": "AGENT_TOOL_LOOP",
+  "expected_min_prepared": 50,
+  "expected_min_executed": 47,
+  "expected_min_equivalent": 42
+}
