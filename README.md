@@ -16,6 +16,8 @@ Minefield stays framework-neutral. This plugin is the Hermes-specific adapter.
 | `hermes minefield issues` | `/minefield issues` | Local incidents + linked GitHub status |
 | `hermes minefield status` | `/minefield status` | Fingerprint / cache / recorder health |
 
+**Canonical only:** there is no `/minefield-doctor` skill/command. Use `/minefield doctor` (or `hermes minefield doctor`). The obsolete local skill `~/.hermes/skills/mlops/minefield-doctor` was removed.
+
 **Slash vs Bash:** `/minefield wtf` is a Hermes interactive slash command (type it in a Hermes session). From a normal shell use `hermes minefield wtf` — bare `/minefield` is not a Bash command.
 
 ## Install (opt-in)
