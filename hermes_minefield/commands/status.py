@@ -44,7 +44,23 @@ def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -
     except Exception as e:
         cache_age = f"target unresolved: {type(e).__name__}"
 
-    stats = get_recorder().stats()
+    rec = get_recorder()
+    stats = rec.stats()
+    # Cheap recent persisted peek (bounded) so status reflects cross-process activity.
+    recent_persisted = 0
+    try:
+        from ..recorder.store import load_recent_persisted_events
+
+        recent_persisted = len(
+            load_recent_persisted_events(
+                since_seconds=min(stats.retention_seconds, 600),
+                retention_seconds=stats.retention_seconds,
+                max_events=min(200, stats.max_events),
+                max_bytes=min(256_000, stats.max_bytes),
+            )
+        )
+    except Exception:
+        recent_persisted = 0
     text = render_status(
         fingerprint_short=fp_short,
         fingerprint_kind="lite-cache (config-resolved)",
@@ -53,6 +69,8 @@ def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -
             "events_in_memory": stats.events_in_memory,
             "retention_seconds": stats.retention_seconds,
             "max_bytes": stats.max_bytes,
+            "persisted_recent": recent_persisted,
+            "persisted_bytes": stats.persisted_approx_bytes,
         },
         last_summary=last_summary,
         auto_lite=cfg.auto_lite,

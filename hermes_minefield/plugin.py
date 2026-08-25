@@ -62,6 +62,6 @@ def register(ctx: Any) -> None:
     ctx.register_hook("api_request_error", _safe(rec_hooks.on_api_request_error))
     ctx.register_hook("on_session_start", _safe(rec_hooks.on_session_start))
     ctx.register_hook("on_session_end", _safe(rec_hooks.on_session_end))
-    ctx.register_hook("on_session_finalize", _safe(rec_hooks.on_session_end))
+    ctx.register_hook("on_session_finalize", _safe(rec_hooks.on_session_finalize))
 
     logger.info("hermes-minefield plugin registered (auto_lite=%s)", cfg.auto_lite)

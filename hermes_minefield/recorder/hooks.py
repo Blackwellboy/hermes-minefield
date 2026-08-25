@@ -213,12 +213,24 @@ def on_session_start(**kwargs) -> None:
 
 def on_session_end(**kwargs) -> None:
     kw = _kw(kwargs)
-    get_recorder().record(
+    rec = get_recorder()
+    rec.record(
         RecorderEvent(
             type=SESSION_END,
             session_id_hash=_session_hash(kw.get("session_id")),
         )
     )
+    # Best-effort batch flush so a later `hermes minefield wtf` in a fresh
+    # process can see this session. Not a per-event fsync.
+    try:
+        rec.flush()
+    except Exception:
+        pass
+
+
+def on_session_finalize(**kwargs) -> None:
+    """Alias lifecycle hook — record end + flush pending batch."""
+    on_session_end(**kwargs)
 
 
 def _as_str(v: Any) -> Optional[str]:

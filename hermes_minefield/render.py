@@ -140,7 +140,12 @@ def render_status(
         f"  fingerprint: {fingerprint_short or 'unknown'}  [{fingerprint_kind}]",
         f"  cache:       {cache_age or 'none'}",
         f"  auto_lite:   {auto_lite}",
-        f"  recorder:    {recorder_stats.get('events_in_memory', 0)} events in memory",
+        f"  recorder:    {recorder_stats.get('events_in_memory', 0)} in memory"
+        + (
+            f", {recorder_stats.get('persisted_recent', 0)} recent on disk"
+            if "persisted_recent" in recorder_stats
+            else ""
+        ),
         f"  retention:   {recorder_stats.get('retention_seconds', '?')}s",
         f"  max_bytes:   {recorder_stats.get('max_bytes', '?')}",
     ]

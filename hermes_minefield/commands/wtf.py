@@ -19,7 +19,6 @@ def parse_window(raw: Optional[str], default_seconds: float = 300.0) -> float:
     raw = raw.strip()
     m = _DURATION_RE.match(raw)
     if not m:
-        # bare number → minutes if large? treat as seconds if no unit
         try:
             return float(raw)
         except ValueError:
@@ -43,17 +42,18 @@ def run_wtf(
     sid_hash = None
     if session and session not in {"current", "all"}:
         sid_hash = stable_hash(session, n=16)
-    # session=current → leave unfiltered (hooks may not always have id)
 
     rec = get_recorder()
     intro = f"yeah, that looked weird. freezing the last {since:.0f} seconds..."
-    events = rec.freeze(since_seconds=since, session_id_hash=sid_hash)
+    frozen = rec.freeze_detailed(since_seconds=since, session_id_hash=sid_hash)
+    events = frozen.events
     artifact = analyze_events(
         events,
         session_id_hash=sid_hash,
         since_seconds=since,
         persist=persist,
     )
+    # Concise UX; sources available in structured result for debug/tests.
     body = render_incident(artifact)
     return {
         "ok": True,
@@ -63,4 +63,9 @@ def run_wtf(
         "severity": artifact.severity,
         "artifact": artifact.to_dict(),
         "event_count": len(events),
+        "event_sources": {
+            "memory": frozen.memory_count,
+            "persisted": frozen.persisted_count,
+            "deduped": frozen.deduped_count,
+        },
     }
