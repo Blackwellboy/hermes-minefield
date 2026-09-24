@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from ..cache import get_entry, load_cache
+from ..cache import get_entry, is_fresh, load_cache
 from ..config import load_plugin_config
 from ..fingerprint import fingerprint_for_hermes_target
 from ..recorder.store import get_recorder
@@ -27,7 +27,8 @@ def run_status(*, base_url: str | None = None, model: str | None = None) -> dict
         entry = get_entry(fp.key)
         if entry:
             age_s = time.time() - entry.checked_at
-            cache_age = f"{age_s / 60:.1f}m ago ({entry.mode})"
+            stale = not is_fresh(entry, ttl_days=cfg.fingerprint_cache_ttl_days)
+            cache_age = f"{age_s / 60:.1f}m ago ({entry.mode}{', STALE' if stale else ''})"
             _, clean, problem, inconclusive = extract_summary_counts(entry.summary)
             # Prefer repaired counts from findings when legacy cache stored zeros.
             if (entry.clean, entry.problem, entry.inconclusive) == (0, 0, 0) and (
@@ -40,7 +41,8 @@ def run_status(*, base_url: str | None = None, model: str | None = None) -> dict
                 c, p, i = entry.clean, entry.problem, entry.inconclusive
             from .check import cached_verdict
 
-            last_verdict = cached_verdict(entry.summary)
+            # A stale result is no longer evidence about the target.
+            last_verdict = "UNKNOWN (stale)" if stale else cached_verdict(entry.summary)
             last_summary = (
                 f"  verdict={last_verdict} clean={c} problem={p} inconclusive={i} "
                 f"requests={entry.requests_executed}"

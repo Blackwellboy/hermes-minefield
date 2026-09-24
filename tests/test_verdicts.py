@@ -225,3 +225,44 @@ def test_exit_codes():
     assert V.exit_code({"verdict": V.UNKNOWN, "blocked": True}) == 2
     assert V.exit_code({"ok": True}) == 0
     assert V.exit_code({"ok": False}) == 1
+
+
+# --- T1.4: cache TTL ---------------------------------------------------------
+
+
+def _cached_pass(age_days: float):
+    put_entry(
+        CacheEntry(
+            fingerprint=cache_key(),
+            checked_at=time.time() - age_days * 86400,
+            mode="lite",
+            summary={"clean": 2, "problem": 0, "inconclusive": 0, "findings": [], "verdict": V.PASS},
+            requests_executed=2,
+            clean=2,
+            problem=0,
+            inconclusive=0,
+        )
+    )
+
+
+def test_fresh_cache_is_served(configured):
+    _cached_pass(age_days=1)
+    out = run_check()
+    assert (out["cached"], out["verdict"]) == (True, V.PASS)
+
+
+def test_expired_cache_is_a_miss(configured, monkeypatch):
+    _cached_pass(age_days=31)  # default TTL is 30 days
+    fake_minefield(monkeypatch, FakeResult(requests_executed=0, reachable=False, error="target_unreachable"))
+    out = run_check()
+    assert out["cached"] is False
+    assert out["verdict"] == V.UNKNOWN  # re-ran, and the endpoint is down now
+
+
+def test_status_marks_stale_cache_unknown(configured):
+    from hermes_minefield.commands.status import run_status
+
+    _cached_pass(age_days=31)
+    out = run_status()
+    assert out["last_verdict"] == "UNKNOWN (stale)"
+    assert "STALE" in out["text"]

@@ -66,7 +66,7 @@ def run_check(
 
     # Same key as status — do not omit reasoning_mode or cache lookups diverge.
     fp = fingerprint_for_hermes_target(model=target.model, base_url=target.base_url)
-    cached = get_entry(fp.key)
+    cached = get_entry(fp.key, ttl_days=cfg.fingerprint_cache_ttl_days)
     if cached and not force:
         verdict = cached_verdict(cached.summary)
         age_min = (time.time() - cached.checked_at) / 60

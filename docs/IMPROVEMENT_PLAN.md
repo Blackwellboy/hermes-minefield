@@ -308,7 +308,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     4. Tests: monkeypatch `minefield.api.plan_checks/run_checks/summarize` (see `tests/test_doctor_exit.py` for the pattern) to return a result with `reachable=False`. Assert `ok is False`, `get_entry(fp) is None`, and the CLI exit code is 1. Do the same for the zero-requests case.
   - **Accept:** Tests pass. Manually, `hermes minefield check --base-url http://127.0.0.1:9/v1` exits 1 with a clear message, and `hermes minefield status` shows `cache: none`.
 
-- [ ] **T1.4 Enforce cache TTL**
+- [x] **T1.4 Enforce cache TTL**
   - **Why:** F9.
   - **Do:** `cache.get_entry(fingerprint, *, ttl_days: Optional[int] = None)` returns `None` when `ttl_days` is set and `not is_fresh(entry, ttl_days=ttl_days)`. Pass `cfg.fingerprint_cache_ttl_days` from `check.py`. `status.py` should show stale entries as `"<age> ago (lite, STALE)"` rather than hiding them. Add tests with a monkeypatched `time.time`.
   - **Accept:** A cached entry older than the TTL causes `check` to re-run (not return `cached: True`).
@@ -402,7 +402,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     6. Tests: `record()` doesn't touch disk (monkeypatch `Path.open` to raise; `record()` must still succeed). After `flush()`, the events are on disk. `stop()` is idempotent.
   - **Accept:** Tests pass. A microbench (`python -m timeit`) on `record()` shows no regression from the ~10 µs/event in `docs/DOGFOOD_20260825.md`. Report the numbers in the PR.
 
-- [ ] **T2.5 Multi-process-safe persistence (segment files)**
+- [x] **T2.5 Multi-process-safe persistence (segment files)**
   - **Why:** F16. The CLI and gateway can run at the same time.
   - **Do:**
     1. Each `FlightRecorder` writes only to its own segment, `recorder/events-<pid>-<start_ts_int>.jsonl`, in append-only mode. Nothing ever rewrites another process's file.
