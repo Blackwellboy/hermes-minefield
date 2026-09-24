@@ -75,7 +75,6 @@ def extract_summary_counts(summary: Any) -> tuple[list[Any], int, int, int]:
     derived = counts_from_findings(findings)
     if clean is None or (findings and (clean, problem, inconclusive) == (0, 0, 0) and derived != (0, 0, 0)):
         clean, problem, inconclusive = derived
-    assert clean is not None and problem is not None and inconclusive is not None
     return findings, clean, problem, inconclusive
 
 

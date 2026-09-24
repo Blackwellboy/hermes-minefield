@@ -313,7 +313,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Do:** `cache.get_entry(fingerprint, *, ttl_days: Optional[int] = None)` returns `None` when `ttl_days` is set and `not is_fresh(entry, ttl_days=ttl_days)`. Pass `cfg.fingerprint_cache_ttl_days` from `check.py`. `status.py` should show stale entries as `"<age> ago (lite, STALE)"` rather than hiding them. Add tests with a monkeypatched `time.time`.
   - **Accept:** A cached entry older than the TTL causes `check` to re-run (not return `cached: True`).
 
-- [ ] **T1.5 No exception ever escapes a command**
+- [x] **T1.5 No exception ever escapes a command**
   - **Why:** F13. Slash-command exceptions surface as raw tracebacks in chat.
   - **Do:**
     1. In `commands/dispatch.py`, add `_guard(fn, **kw) -> dict`. It calls `fn(**kw)` and catches `ValueError` and `PermissionError`, returning `{"ok": False, "text": str(e)}`. It catches any other `Exception`, returning `{"ok": False, "text": f"minefield: internal error ({type(e).__name__}). Run with HERMES_PLUGINS_DEBUG=1 for details."}`, and logs it with `logger.debug(..., exc_info=True)`. Use it for every command in both `handle_cli` and `handle_slash`.
@@ -330,7 +330,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     3. Tests for both behaviours.
   - **Accept:** A quiet `wtf` writes no file in `incidents/`. `contribute` never lists its own incident as a duplicate.
 
-- [ ] **T1.7 Replace `assert` with real checks**
+- [x] **T1.7 Replace `assert` with real checks**
   - **Why:** F21.
   - **Do:** In `commands/check.py`, replace both `assert`s with `if …: raise RuntimeError("HARD_BUDGET_VIOLATION: …")`. They're caught by T1.5's guard and reported. Remove the `assert` in `render.extract_summary_counts`, which is unreachable. Keep the logic.
   - **Accept:** `grep -rn "^\s*assert " hermes_minefield` returns nothing.
