@@ -287,7 +287,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     4. Update the existing fixtures and tests that relied on `params=` only if they break, and say which ones in the PR.
   - **Accept:** The new contract tests pass. The review repro now classifies 12 distinct `read_file` calls as **not** `AGENT_TOOL_LOOP`. Add that repro as a test named `test_distinct_reads_are_not_a_loop`.
 
-- [ ] **T1.2 Loop detection needs "same args AND same result"** (depends on T1.1)
+- [x] **T1.2 Loop detection needs "same args AND same result"** (depends on T1.1)
   - **Why:** F7. Repeating a call is only a loop if it makes no progress.
   - **Do:**
     1. Add an optional field `result_fingerprint: Optional[str] = None` to `RecorderEvent` in `recorder/events.py`. Parse it in `from_dict`.

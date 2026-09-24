@@ -59,6 +59,8 @@ class RecorderEvent:
     request_id_hash: str | None = None
     tool_name: str | None = None
     tool_arg_fingerprint: str | None = None
+    # Hash of the tool result: same args + same result = no progress (loop evidence).
+    result_fingerprint: str | None = None
     success: bool | None = None
     result_bytes: int | None = None
     finish_reason: str | None = None
@@ -175,6 +177,7 @@ class RecorderEvent:
             request_id_hash=_opt_str("request_id_hash"),
             tool_name=_opt_str("tool_name"),
             tool_arg_fingerprint=_opt_str("tool_arg_fingerprint"),
+            result_fingerprint=_opt_str("result_fingerprint"),
             success=_opt_bool("success"),
             result_bytes=_opt_int("result_bytes"),
             finish_reason=_opt_str("finish_reason"),

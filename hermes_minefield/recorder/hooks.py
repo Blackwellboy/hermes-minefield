@@ -121,6 +121,17 @@ def on_pre_tool_call(tool_name: str = "", args: Any = None, **kwargs) -> None:
         )
 
 
+def _result_fingerprint(result: Any) -> str | None:
+    if result is None:
+        return None
+    if isinstance(result, (str, bytes, bytearray)):
+        return stable_hash(result, n=16)
+    try:
+        return stable_hash(json.dumps(result, sort_keys=True, default=str), n=16)
+    except Exception:
+        return None
+
+
 def on_post_tool_call(tool_name: str = "", args: Any = None, result: Any = None, **kwargs) -> None:
     kw = kwargs
     rec = get_recorder()
@@ -136,6 +147,7 @@ def on_post_tool_call(tool_name: str = "", args: Any = None, result: Any = None,
         success = err is None
         error_class = type(err).__name__ if err is not None else None
     result_bytes = _payload_len(result)
+    result_fp = _result_fingerprint(result)
     wall_ms = _as_float(kw.get("duration_ms"))
     req = _req_hash(kw)
 
@@ -146,6 +158,7 @@ def on_post_tool_call(tool_name: str = "", args: Any = None, result: Any = None,
             request_id_hash=req,
             tool_name=name,
             tool_arg_fingerprint=fp,
+            result_fingerprint=result_fp,
             success=success,
             result_bytes=result_bytes,
             wall_ms=wall_ms,
@@ -158,6 +171,7 @@ def on_post_tool_call(tool_name: str = "", args: Any = None, result: Any = None,
             request_id_hash=req,
             tool_name=name,
             tool_arg_fingerprint=fp,
+            result_fingerprint=result_fp,
             success=success,
             result_bytes=result_bytes,
             error_class=error_class,

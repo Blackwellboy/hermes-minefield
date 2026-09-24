@@ -32,7 +32,7 @@ class AnalysisSignals:
     prepared_by_tool: dict[str, int]
     executed_by_tool: dict[str, int]
     requested_by_tool: dict[str, int]
-    equivalent_executed: dict[str, int]  # tool -> count of fingerprint repeats beyond first
+    equivalent_executed: dict[str, int]  # tool -> repeats beyond first of identical (args, result)
     total_prepared: int
     total_executed: int
     total_api_errors: int
@@ -58,7 +58,13 @@ def compute_signals(events: Sequence[RecorderEvent]) -> AnalysisSignals:
         elif e.type == TOOL_EXECUTED:
             executed[name] += 1
             if e.tool_arg_fingerprint:
-                exec_fps[name][e.tool_arg_fingerprint] += 1
+                # A repeat is only "equivalent" (no progress) when the result is also
+                # identical. Events persisted before result fingerprints existed fall
+                # back to args-only matching.
+                key = e.tool_arg_fingerprint
+                if e.result_fingerprint:
+                    key = f"{key}|{e.result_fingerprint}"
+                exec_fps[name][key] += 1
         elif e.type == API_ERROR:
             api_errors += 1
 

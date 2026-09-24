@@ -165,3 +165,50 @@ def test_distinct_reads_are_not_a_loop(fresh_recorder):
         )
     result = classify(compute_signals(events(fresh_recorder)))
     assert result.classification != "AGENT_TOOL_LOOP"
+
+
+# --- T1.2: a loop needs same args AND same result --------------------------
+
+
+def _run_calls(results: list[str], args=None):
+    for i, result in enumerate(results):
+        a = args if args is not None else {"command": "date"}
+        fire("pre_tool_call", tool_name="terminal", args=a, tool_call_id=f"c{i}")
+        fire("post_tool_call", tool_name="terminal", args=a, tool_call_id=f"c{i}", result=result)
+
+
+def test_same_args_same_result_is_a_loop(fresh_recorder):
+    _run_calls(['{"output": "no such file"}'] * 12)
+    assert classify(compute_signals(events(fresh_recorder))).classification == "AGENT_TOOL_LOOP"
+
+
+def test_same_args_changing_result_is_not_a_loop(fresh_recorder):
+    """Polling (`date`, `git status` while a build runs) makes progress: not a loop."""
+    _run_calls([json.dumps({"output": f"tick {i}"}) for i in range(12)])
+    assert classify(compute_signals(events(fresh_recorder))).classification != "AGENT_TOOL_LOOP"
+
+
+def test_result_fingerprint_is_a_hash_not_content(fresh_recorder):
+    fire("post_tool_call")
+    ev = of_type(fresh_recorder, "tool.executed")[0]
+    assert ev.result_fingerprint and len(ev.result_fingerprint) == 16
+    assert "SENTINEL" not in json.dumps(ev.to_dict())
+
+
+def test_legacy_events_without_result_fingerprint_still_classify():
+    """Events persisted by older versions have no result_fingerprint: args-only matching."""
+    from hermes_minefield.recorder.events import RecorderEvent
+
+    legacy = [
+        RecorderEvent.from_dict(
+            {
+                "type": "tool.executed",
+                "ts": 1000.0 + i,
+                "tool_name": "search_files",
+                "tool_arg_fingerprint": "same",
+            },
+            now=2000.0,
+        )
+        for i in range(12)
+    ]
+    assert classify(compute_signals(legacy)).classification == "AGENT_TOOL_LOOP"
