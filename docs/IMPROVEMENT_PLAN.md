@@ -382,6 +382,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     2. In `resolve_target`, when no explicit `base_url` is given, first try:
        ```python
        from hermes_cli.runtime_provider import resolve_runtime_provider
+
        rt = resolve_runtime_provider(target_model=model)  # may raise
        ```
        Use `rt.get("base_url")`, `rt.get("api_key")`, and `rt.get("provider")`, with `source="hermes_runtime"`. On any exception, or when there's no `base_url`, fall back to the existing config parsing, which stays as-is.
@@ -422,7 +423,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Do:** Add the config `incident_retention_days` (default 90, range 1–3650) and a new command `hermes minefield prune [--older-than 30d] [--dry-run]`, also available as slash `/minefield prune`. It deletes old `INC-*.json`, `CAND-*.json`, and `draft-*.json` files. `save_incident` compacts `index.jsonl` to the last 1000 lines whenever it has more than 2000. Incidents linked to an open GitHub issue (T4.1) are never pruned.
   - **Accept:** Tests pass. `--dry-run` deletes nothing.
 
-- [ ] **T2.8 Stop mutating `sys.path` at plugin load**
+- [x] **T2.8 Stop mutating `sys.path` at plugin load**
   - **Why:** F19.
   - **Do:** Change the root `__init__.py` to `from .hermes_minefield.plugin import register`, and delete the `sys.path` code. All intra-package imports in `hermes_minefield/` are already relative. Check with `grep -rn "^from hermes_minefield\|^import hermes_minefield" hermes_minefield`, which must return nothing. Tests keep working through `pythonpath = ["."]`.
   - **Accept:** `hermes plugins validate .` passes. After symlinking into `$HERMES_HOME/plugins/`, `hermes minefield status` works (use the e2e script from T3.8). If Hermes turns out not to load the root as a package, **stop**. Record it in the PR and in §6.
