@@ -262,7 +262,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 
 ### Phase 1: Critical correctness (make `wtf` and `check` tell the truth)
 
-- [ ] **T1.1 Match the recorder hooks to Hermes's real kwargs** (depends on T0.1)
+- [x] **T1.1 Match the recorder hooks to Hermes's real kwargs** (depends on T0.1)
   - **Why:** F1, F2, F3, F4. This is the most important task in the plan.
   - **Do:**
     1. Create `tests/fixtures/hermes_hook_payloads.json`. It holds one realistic kwargs example per hook, copied from the tables in §2.1 with fake values: `session_id: "sess-1"`, `args: {"path": "a.py"}`, `result: "{\"ok\": true}"`, and so on. Include one `post_tool_call` with `status: "error"`, `error_type: "tool_error"`, and one `api_request_error` with `status_code: 503, error: {"type": "APIStatusError", "message": "secret-ish text"}`. This fixture is the **contract**. Add a header field `"_source": "hermes-agent@d350422b hooks.md + fire sites"`.

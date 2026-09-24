@@ -18,3 +18,27 @@ def test_declared_hooks_are_registered(hermes_plugins):
     declared = set(yaml.safe_load((ROOT / "plugin.yaml").read_text())["provides_hooks"])
     for hook in declared:
         assert hermes_plugins.has_hook(hook), f"{hook} declared but not registered"
+
+
+def test_contract_payloads_replayed_through_hermes(hermes_plugins, hermes_home):
+    """Fire every fixture payload through Hermes's own invoke_hook, then read what
+    the plugin persisted (works whatever module name Hermes loaded it under)."""
+    import json
+
+    from hermes_minefield.recorder.store import load_recent_persisted_events
+
+    fixture = json.loads((ROOT / "tests" / "fixtures" / "hermes_hook_payloads.json").read_text())["hooks"]
+    for key, spec in fixture.items():
+        results = hermes_plugins.invoke_hook(spec.get("hook", key), **spec["payload"])
+        # pre_llm_call results would be injected into the user's prompt.
+        assert all(r is None for r in results), f"{key} returned {results!r}"
+    hermes_plugins.invoke_hook("on_session_end", session_id="sess-1", completed=True, interrupted=False)
+
+    events = load_recent_persisted_events(since_seconds=600)
+    types = {e.type for e in events}
+    assert {"tool.requested", "tool.executed", "tool.failed", "api.response", "api.error"} <= types
+    failed = [e for e in events if e.type == "tool.failed"]
+    assert failed and failed[0].error_class == "tool_error"
+    raw = "".join(p.read_text() for p in (hermes_home / "minefield" / "recorder").glob("*.jsonl"))
+    assert "SENTINEL" not in raw, "persisted recorder leaked private fixture content"
+    assert json.dumps([e.to_dict() for e in events])
