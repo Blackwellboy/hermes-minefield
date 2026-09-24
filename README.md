@@ -64,7 +64,13 @@ model-serving-minefield  (plan_checks / run_checks / summarize)
 ## Development
 
 ```bash
-PYTHONPATH=.:/path/to/model-serving-minefield pytest -q
+./scripts/dev_setup.sh          # venv + pinned Minefield + pinned Hermes (editable)
+source .venv/bin/activate
+ruff check hermes_minefield tests && ruff format --check hermes_minefield tests
+pytest -q
+hermes plugins validate .
 ```
+
+Override the pinned refs with `MINEFIELD_REF=<sha>` / `HERMES_REF=<sha>`.
 
 Do **not** open NousResearch PRs from this repo without separate owner approval.
