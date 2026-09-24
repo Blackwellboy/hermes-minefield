@@ -3,6 +3,8 @@
 > **Who this is for:** a coding agent (GLM, DeepSeek, or similar) working through the plan one task at a time, and the repo owner reviewing each PR.
 > **Written:** 2026-09-24, from a full review of `main` @ `6479671`. **Revised** the same day after owner review: added the diagnostic-integrity rule, T0.5 (Hermes compatibility matrix), T1.8 (verdicts), milestone ordering (hot-path safety moved into Milestone A), F6/F15/F16 raised in severity, and privacy-first remote dedupe.
 >
+> **Implementation status (2026-09-24):** Milestones A, B and C are implemented, plus T6.1–T6.2. CI is green across the Hermes compatibility matrix. What's left needs the owner: Gate A sign-off on a real Hermes install, the T6.3 tag, and T6.4 (locked).
+>
 > **Status:** `hermes-minefield` is **experimental**. Don't rely on its diagnoses until Gate A (§4.0) passes. This is about the Hermes adapter only. The `model-serving-minefield` registry and Doctor underneath are a separate, healthy system.
 > **Verified against:** hermes-agent `d350422b15863fc4c0b7962b122b625a0271516c` (v0.21.5) and model-serving-minefield `7b324f86d424c20bce177200851c968c1d70c536`.
 
@@ -401,7 +403,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     4. `register()` calls `ctx.on_unload(lambda: get_recorder().stop())` when `hasattr(ctx, "on_unload")`, and also `atexit.register(...)`.
     5. `reset_recorder_for_tests()` must stop any previous global recorder.
     6. Tests: `record()` doesn't touch disk (monkeypatch `Path.open` to raise; `record()` must still succeed). After `flush()`, the events are on disk. `stop()` is idempotent.
-  - **Accept:** Tests pass. A microbench (`python -m timeit`) on `record()` shows no regression from the ~10 µs/event in `docs/DOGFOOD_20260825.md`. Report the numbers in the PR.
+  - **Accept:** Tests pass. A microbench (`python -m timeit`) on `record()` shows no regression from the ~10 µs/event in `docs/history/DOGFOOD_20260825.md`. Report the numbers in the PR.
 
 - [x] **T2.5 Multi-process-safe persistence (segment files)**
   - **Why:** F16. The CLI and gateway can run at the same time.
@@ -604,20 +606,21 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 
 ### Phase 6: Packaging, docs, release, and getting into Hermes
 
-- [ ] **T6.1 Single version source and README truth**
+- [x] **T6.1 Single version source and README truth**
   - **Do:** `hermes_minefield/version.py` is the source of truth. `pyproject.toml` uses `dynamic = ["version"]` with `[tool.setuptools.dynamic] version = {attr = "hermes_minefield.version.__version__"}`. A test asserts `plugin.yaml` `version` equals `__version__`. Rewrite the README:
     - Install: `hermes plugins install Blackwellboy/hermes-minefield --ref <release-sha> --enable` (the `owner/repo` and `--ref` form is documented in hermes-agent `website/docs/user-guide/features/plugins.md`). Once it's in the catalog: `hermes plugins install hermes-minefield`. The symlink method stays as a "development install".
     - Remove the claim about the `hermes_agent.plugins` entry point.
     - Add sections: config (the T2.2 YAML), exit codes, privacy model (exactly what is and isn't stored), and troubleshooting (`HERMES_PLUGINS_DEBUG=1`).
   - **Accept:** The version test passes. Every command in the README has been run once, and the output is in the PR.
 
-- [ ] **T6.2 CHANGELOG and docs cleanup**
+- [x] **T6.2 CHANGELOG and docs cleanup**
   - **Do:** Add `CHANGELOG.md` (Keep a Changelog format). Its `0.2.0` entry lists F1–F25 fixes by task. Move the dated `docs/*_20260825.md` notes into `docs/history/`. Add `docs/ARCHITECTURE.md` describing the §3 diagram and the event schema, and `docs/CLASSIFICATION.md` with the T3.4 rule table.
   - **Accept:** Links in the README resolve.
 
 - [ ] **T6.3 Release v0.2.0**
   - **Do:** When every task above is ticked, bump the version to `0.2.0`, run the full gate and the e2e suite, and create the tag `v0.2.0` and a GitHub release with the CHANGELOG entry. **The owner creates the tag.** The executor prepares the PR and a release-notes draft only.
   - **Accept:** The release exists, and CI is green on the tagged commit.
+  - *Status:* prepared. Version is 0.2.0 everywhere, and the CHANGELOG entry is written. **Waiting on the owner** to run Gate A on a real install, then tag `v0.2.0` and publish the release.
 
 - [ ] **T6.4 Hermes plugin catalog submission** 🔒 *Needs written owner approval before starting.*
   - **Why:** This is the proper way into Hermes. The catalog is human-reviewed and pins an exact SHA, and users get `hermes plugins install hermes-minefield`. Upstreaming into Hermes core isn't needed and isn't recommended: Minefield is framework-neutral, and this plugin is the adapter.
@@ -648,3 +651,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 - `privacy._ABS_HOME` doesn't cover `/root/` or non-`C:` Windows drives.
 - Hermes doesn't expose guardrail *warnings* to plugins (only refusals, through tool results). Suggest an observer hook upstream **only with owner approval**.
 - `IncidentArtifact.new_id()` uses 4 hex chars, about 65k per day. Consider 8.
+- Loop detection only catches *consecutive* identical calls. Hermes's guardrails also catch repeating cycles (A,B,A,B… with identical args and results). Add cycle detection to `signals.py` and a `tool_loop_cycle` rule.
+- `cache.put_entry` is a read-modify-write of one JSON file. Two processes writing at the same moment can drop one entry (never corrupt it: writes are atomic). Acceptable for a cache; revisit if it matters.
+- Upstream: Hermes's own `.github/actions/plugin-validate` runs `pip install git+…hermes-agent`, which Hermes's `setup.py` build guard rejects outside Nix. Worth reporting upstream (**owner approval required**). This repo's CI works around it with an editable install.
+- `hermes plugins validate` is missing on Hermes 0.21.0, so the minimum-version CI entry runs the contract, loader and Gate A tests but not the validator.

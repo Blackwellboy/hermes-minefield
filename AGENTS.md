@@ -5,6 +5,9 @@ This repo is **hermes-minefield**, a standalone Hermes Agent plugin that adapts
 
 ## If you were asked to "work on the plan"
 
+The plan is implemented through T6.2 (see the status note at the top of the plan). New work goes in **§6 Parking lot** first, then becomes a task.
+
+
 1. Open `docs/IMPROVEMENT_PLAN.md` and read **§0 (How to execute)** and **§2 (Hermes facts)** in full.
 2. Pick the first unticked task (`- [ ]`) **in the §4.0 milestone order** (not numeric ID order). Do only that task. Don't start a new milestone until the previous milestone's gate has passed.
 3. Follow its **Do** steps exactly. Meet its **Accept** criteria and pass the check gate in §0.1.
@@ -25,8 +28,9 @@ This repo is **hermes-minefield**, a standalone Hermes Agent plugin that adapts
 ## Quick commands
 
 ```bash
-./scripts/dev_setup.sh && source .venv/bin/activate   # after plan task T0.1 exists
+./scripts/dev_setup.sh && source .venv/bin/activate
 ruff check hermes_minefield tests && ruff format --check hermes_minefield tests
 pytest -q
-hermes plugins validate .
+pytest -q -m gate_a tests/e2e     # real Hermes processes, ~5 min
+./scripts/validate_plugin.sh
 ```

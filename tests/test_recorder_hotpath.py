@@ -102,5 +102,5 @@ def test_record_is_cheap():
     for i in range(n):
         r.record(RecorderEvent(type="tool.executed", tool_name="t", tool_arg_fingerprint=str(i)))
     per_event_us = (time.perf_counter() - t0) / n * 1e6
-    # docs/DOGFOOD_20260825.md measured ~10.5 us/event; allow CI noise.
+    # docs/history/DOGFOOD_20260825.md measured ~10.5 us/event; allow CI noise.
     assert per_event_us < 100, per_event_us
