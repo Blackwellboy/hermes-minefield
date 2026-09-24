@@ -24,6 +24,7 @@ def test_contract_payloads_replayed_through_hermes(hermes_plugins, hermes_home):
     """Fire every fixture payload through Hermes's own invoke_hook, then read what
     the plugin persisted (works whatever module name Hermes loaded it under)."""
     import json
+    import time
 
     from hermes_minefield.recorder.store import load_recent_persisted_events
 
@@ -34,9 +35,17 @@ def test_contract_payloads_replayed_through_hermes(hermes_plugins, hermes_home):
         assert all(r is None for r in results), f"{key} returned {results!r}"
     hermes_plugins.invoke_hook("on_session_end", session_id="sess-1", completed=True, interrupted=False)
 
-    events = load_recent_persisted_events(since_seconds=600)
-    types = {e.type for e in events}
-    assert {"tool.requested", "tool.executed", "tool.failed", "api.response", "api.error"} <= types
+    # Persistence is asynchronous (the flusher thread writes every ~2s, or
+    # when on_session_end requests it), exactly as a separate wtf process sees it.
+    wanted = {"tool.requested", "tool.executed", "tool.failed", "api.response", "api.error"}
+    deadline = time.time() + 10
+    while True:
+        events = load_recent_persisted_events(since_seconds=600)
+        types = {e.type for e in events}
+        if wanted <= types or time.time() > deadline:
+            break
+        time.sleep(0.1)
+    assert wanted <= types
     failed = [e for e in events if e.type == "tool.failed"]
     assert failed and failed[0].error_class == "tool_error"
     raw = "".join(p.read_text() for p in (hermes_home / "minefield" / "recorder").glob("*.jsonl"))

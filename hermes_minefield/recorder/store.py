@@ -146,9 +146,14 @@ class FlightRecorder:
     Design goals:
     - Metadata-first events only
     - Hard ceilings on count, age, and approximate bytes
-    - No sync disk write per UI event (batch flush)
+    - ``record()`` does no file I/O: it runs inside Hermes hooks, and a slow or
+      failing ``pre_tool_call`` callback makes Hermes block the user's tool.
+      A daemon flusher thread writes batches (every ~2s or 32 events).
     - Fresh CLI processes can freeze recent persisted events
     """
+
+    FLUSH_BATCH = 32
+    FLUSH_INTERVAL = 2.0
 
     def __init__(
         self,
@@ -164,67 +169,104 @@ class FlightRecorder:
         self.max_bytes = max_bytes
         self.persist = persist
         self._path = path  # optional override for tests
-        self._buf: deque[RecorderEvent] = deque()
+        self._buf: deque[tuple[RecorderEvent, int]] = deque()  # (event, serialized size)
         self._approx_bytes = 0
-        self._lock = threading.RLock()
-        self._pending_flush: list[dict] = []
-        self._last_flush = 0.0
+        self._lock = threading.RLock()  # guards _buf / _pending (memory only, never held for I/O)
+        self._io_lock = threading.Lock()  # serializes file writes
+        self._pending: list[str] = []  # serialized rows awaiting flush
+        self._wake = threading.Event()
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
         self.last_freeze: FreezeResult | None = None
 
     def _jsonl_path(self) -> Path:
         return self._path or events_jsonl_path()
 
+    # -- hot path (called from Hermes hooks) -------------------------------
+
     def record(self, event: RecorderEvent) -> None:
+        """Append to memory. O(1)-ish, no file I/O, never blocks on disk."""
+        try:
+            row = json.dumps(event.to_dict(), default=str)
+        except Exception:
+            row = None
+        size = len(row) if row is not None else 128
         with self._lock:
-            self._buf.append(event)
-            try:
-                self._approx_bytes += len(json.dumps(event.to_dict(), default=str))
-            except Exception:
-                self._approx_bytes += 128
+            self._buf.append((event, size))
+            self._approx_bytes += size
             self._trim_locked()
-            if self.persist:
-                self._pending_flush.append(event.to_dict())
-                now = time.time()
-                if len(self._pending_flush) >= 32 or (now - self._last_flush) > 2.0:
-                    self._flush_locked()
+            if self.persist and row is not None and not self._stop.is_set():
+                self._pending.append(row)
+                if len(self._pending) >= self.FLUSH_BATCH:
+                    self._wake.set()
+        if self.persist and self._thread is None:
+            self._start_flusher()
 
-    def flush(self) -> None:
-        """Best-effort batch flush (session end / freeze). Not a per-event fsync."""
+    def request_flush(self) -> None:
+        """Ask the flusher thread to write soon (safe to call from hooks)."""
+        self._wake.set()
+
+    # -- background persistence --------------------------------------------
+
+    def _start_flusher(self) -> None:
         with self._lock:
-            if self.persist:
-                self._flush_locked()
+            if self._thread is not None or self._stop.is_set():
+                return
+            t = threading.Thread(target=self._flusher_loop, name="minefield-recorder-flush", daemon=True)
+            self._thread = t
+        t.start()
 
-    def _trim_locked(self) -> None:
-        cutoff = time.time() - self.retention_seconds
-        while self._buf and (self._buf[0].ts < cutoff or len(self._buf) > self.max_events):
-            old = self._buf.popleft()
-            try:
-                self._approx_bytes -= len(json.dumps(old.to_dict(), default=str))
-            except Exception:
-                self._approx_bytes = max(0, self._approx_bytes - 128)
-        while self._buf and self._approx_bytes > self.max_bytes:
-            old = self._buf.popleft()
-            try:
-                self._approx_bytes -= len(json.dumps(old.to_dict(), default=str))
-            except Exception:
-                self._approx_bytes = max(0, self._approx_bytes - 128)
-        self._approx_bytes = max(0, self._approx_bytes)
+    def _flusher_loop(self) -> None:
+        while not self._stop.is_set():
+            self._wake.wait(timeout=self.FLUSH_INTERVAL)
+            self._wake.clear()
+            self._write_pending()
 
-    def _flush_locked(self) -> None:
-        if not self._pending_flush:
-            return
+    def _take_pending(self) -> list[str]:
+        with self._lock:
+            rows, self._pending = self._pending, []
+        return rows
+
+    def _write_pending(self) -> None:
+        with self._io_lock:
+            rows = self._take_pending()
+            if rows:
+                self._append_rows(rows)
+
+    def _append_rows(self, rows: list[str]) -> None:
         path = self._jsonl_path()
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a", encoding="utf-8") as fh:
-                for row in self._pending_flush:
-                    fh.write(json.dumps(row, default=str) + "\n")
+                fh.write("\n".join(rows) + "\n")
             if path.stat().st_size > self.max_bytes:
                 self._rotate_disk(path)
         except Exception:
             pass
-        self._pending_flush.clear()
-        self._last_flush = time.time()
+
+    def flush(self) -> None:
+        """Synchronous flush — for commands (freeze/status/exit), never for hooks."""
+        if self.persist:
+            self._write_pending()
+
+    def stop(self) -> None:
+        """Stop the flusher and write whatever is pending. Idempotent."""
+        self._stop.set()
+        self._wake.set()
+        t = self._thread
+        if t is not None and t is not threading.current_thread():
+            t.join(timeout=2.0)
+        self.flush()
+
+    def _trim_locked(self) -> None:
+        cutoff = time.time() - self.retention_seconds
+        buf = self._buf
+        while buf and (
+            buf[0][0].ts < cutoff or len(buf) > self.max_events or self._approx_bytes > self.max_bytes
+        ):
+            _, size = buf.popleft()
+            self._approx_bytes -= size
+        self._approx_bytes = max(0, self._approx_bytes)
 
     def _rotate_disk(self, path: Path) -> None:
         try:
@@ -267,16 +309,15 @@ class FlightRecorder:
         include_persisted: bool = True,
     ) -> FreezeResult:
         """Freeze memory (+ recent persisted) for WTF analysis."""
+        self.flush()
         with self._lock:
             self._trim_locked()
-            if self.persist:
-                self._flush_locked()
             cutoff = None
             now = time.time()
             if since_seconds is not None:
                 cutoff = now - since_seconds
             memory: list[RecorderEvent] = []
-            for ev in self._buf:
+            for ev, _ in self._buf:
                 if cutoff is not None and ev.ts < cutoff:
                     continue
                 if session_id_hash and ev.session_id_hash and ev.session_id_hash != session_id_hash:
@@ -312,8 +353,8 @@ class FlightRecorder:
     def stats(self) -> RecorderStats:
         with self._lock:
             self._trim_locked()
-            oldest = self._buf[0].ts if self._buf else None
-            newest = self._buf[-1].ts if self._buf else None
+            oldest = self._buf[0][0].ts if self._buf else None
+            newest = self._buf[-1][0].ts if self._buf else None
             path = self._jsonl_path()
             exists = False
             pbytes = 0
@@ -339,7 +380,7 @@ class FlightRecorder:
         with self._lock:
             self._buf.clear()
             self._approx_bytes = 0
-            self._pending_flush.clear()
+            self._pending.clear()
 
 
 # Process singleton used by hooks + commands
@@ -358,6 +399,8 @@ def get_recorder(**kwargs) -> FlightRecorder:
 def reset_recorder_for_tests(**kwargs) -> FlightRecorder:
     global _GLOBAL
     with _GLOBAL_LOCK:
+        if _GLOBAL is not None:
+            _GLOBAL.stop()
         kwargs.setdefault("persist", False)
         _GLOBAL = FlightRecorder(**kwargs)
         return _GLOBAL

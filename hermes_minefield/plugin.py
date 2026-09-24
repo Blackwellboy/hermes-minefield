@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import atexit
 import logging
 from typing import Any
 
@@ -17,12 +18,19 @@ logger = logging.getLogger(__name__)
 def register(ctx: Any) -> None:
     """Opt-in Hermes plugin registration. Does not modify Hermes core."""
     cfg = load_plugin_config()
-    get_recorder(
+    rec = get_recorder(
         retention_seconds=cfg.recorder_retention_seconds,
         max_events=cfg.recorder_max_events,
         max_bytes=cfg.recorder_max_bytes,
         persist=True,
     )
+    # Write pending recorder events on unload/reload and on interpreter exit.
+    atexit.register(rec.stop)
+    if hasattr(ctx, "on_unload"):
+        try:
+            ctx.on_unload(rec.stop)
+        except Exception:
+            logger.debug("on_unload registration failed", exc_info=True)
 
     ctx.register_cli_command(
         name="minefield",

@@ -304,11 +304,9 @@ def on_session_end(**kwargs) -> None:
             extra[key] = v
     rec = get_recorder()
     rec.record(RecorderEvent(type=SESSION_END, session_id_hash=_session_hash(kw), extra=extra))
-    # Batch flush so a later `hermes minefield wtf` in a fresh process sees this turn.
-    try:
-        rec.flush()
-    except Exception:
-        pass
+    # Ask the background flusher to write now, so a later `hermes minefield wtf`
+    # in a fresh process sees this turn. No file I/O on the hook thread.
+    rec.request_flush()
 
 
 def on_session_finalize(**kwargs) -> None:

@@ -391,7 +391,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     6. Tests use monkeypatched `resolve_runtime_provider` (success, raises, and returns no base_url).
   - **Accept:** Tests pass. The sentinel key is never found.
 
-- [ ] **T2.4 No disk I/O on the hook hot path**
+- [x] **T2.4 No disk I/O on the hook hot path**
   - **Why:** F15.
   - **Do:**
     1. In `FlightRecorder.record()`: append to the ring buffer and `_pending_flush`, then `self._wake.set()` if the pending count is ≥ 32. **No file I/O here.**

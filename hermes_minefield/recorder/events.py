@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Any
 
 # Tool lifecycle — prepare ≠ execute
@@ -72,9 +72,15 @@ class RecorderEvent:
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        d = asdict(self)
-        # Drop Nones for compact storage
-        return {k: v for k, v in d.items() if v is not None and v != {}}
+        # Hot path (every hook): shallow field walk instead of dataclasses.asdict's deep copy.
+        # Drop Nones / empty extra for compact storage.
+        out: dict[str, Any] = {}
+        for name in _FIELD_NAMES:
+            v = getattr(self, name)
+            if v is None or (name == "extra" and not v):
+                continue
+            out[name] = dict(v) if name == "extra" else v
+        return out
 
     def identity(self) -> str:
         """Stable dedupe key — prefer event_id; else metadata fingerprint (no private content)."""
@@ -181,3 +187,6 @@ class RecorderEvent:
             model_hash=_opt_str("model_hash"),
             extra=extra,
         )
+
+
+_FIELD_NAMES: tuple[str, ...] = tuple(f.name for f in fields(RecorderEvent))
