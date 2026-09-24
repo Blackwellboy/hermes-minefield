@@ -24,7 +24,7 @@
    **Missing evidence must never become negative evidence. `UNKNOWN` is not `PASS`.** This applies to `check`, `doctor`, `wtf`, cache reads, recorder gaps, and target resolution. Any change that can turn "couldn't test" into something that looks clean is a release blocker.
 8. **Never do these things** (they are hard rules, even if a task seems to need one):
    - Weaken, skip, or delete an existing test to make CI pass. You may *rewrite* a test when a task explicitly changes that behaviour. Say so in the PR.
-   - Add automatic GitHub submission. Let model output approve anything. Send conversation text, tool arguments, or tool results off the machine.
+   - Add automatic GitHub submission. Let model output approve anything. Allow conversation text, tool arguments, or tool results to leave the machine.
    - Store raw tool arguments, tool results, prompts, or API keys on disk. Store hashes, lengths, and counts only.
    - Add new runtime dependencies. The only runtime dependency is `model-serving-minefield`, and PyYAML stays optional.
    - Open PRs or issues against `NousResearch/hermes-agent` or any repo other than `Blackwellboy/hermes-minefield`. T6.4 is the only exception, and it needs **written owner approval**.
@@ -183,7 +183,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 
 ### Phase 0: Baseline and tooling (no behaviour change)
 
-- [ ] **T0.1 Reproducible dev environment script**
+- [x] **T0.1 Reproducible dev environment script**
   - **Why:** Every later task needs the same local setup, including a real Hermes install for contract tests.
   - **Do:**
     1. Create `scripts/dev_setup.sh` (bash, `set -euo pipefail`). It should:
@@ -195,7 +195,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     3. Update the README "Development" section to use the script.
   - **Accept:** On a clean checkout, `./scripts/dev_setup.sh && source .venv/bin/activate && pytest -q && hermes --help` all succeed.
 
-- [ ] **T0.2 Lint and format config; fix real lint errors**
+- [x] **T0.2 Lint and format config; fix real lint errors**
   - **Why:** F20. `Mapping` is actually undefined in `issues/dedupe.py`. It works today only because of `from __future__ import annotations`.
   - **Do:**
     1. In `pyproject.toml` add:
@@ -212,15 +212,15 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     4. Fix anything that remains by hand. Don't add blanket `# noqa`. A targeted `# noqa: <code>` with a reason is fine.
   - **Accept:** `ruff check` and `ruff format --check` are clean, and `pytest -q` still gives 58 passed.
 
-- [ ] **T0.3 CI: pin dependencies, add lint and Python 3.13**
+- [x] **T0.3 CI: pin dependencies, add lint and Python 3.13**
   - **Why:** F22.
   - **Do:** In `.github/workflows/ci.yml`:
     1. Add `ref: 7b324f86d424c20bce177200851c968c1d70c536` to the Minefield checkout step, with a comment explaining how to bump it.
-    2. Change the matrix to `["3.10", "3.12", "3.13"]`.
+    2. Change the matrix to `["3.11", "3.12", "3.13"]`. *(Done. The plan originally said 3.10, but Hermes itself requires Python `>=3.11,<3.14` and the plugin runs in Hermes's interpreter, so `requires-python` is now `>=3.11`.)*
     3. Add a `lint` job: set up Python 3.12, `pip install ruff`, then `ruff check` and `ruff format --check`.
   - **Accept:** CI is green on the PR.
 
-- [ ] **T0.4 Fix manifest for Hermes admission and add Hermes validation to CI**
+- [x] **T0.4 Fix manifest for Hermes admission and add Hermes validation to CI**
   - **Why:** F5. `hermes plugins validate .` fails today.
   - **Do:**
     1. In `plugin.yaml`, rename the key `hooks:` to `provides_hooks:`. Keep the same list.
@@ -236,9 +236,11 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
                hermes-ref: d350422b15863fc4c0b7962b122b625a0271516c
        ```
        If the validator can't import `minefield`, first add a step that pip-installs Minefield at the pinned SHA. Note in the PR whether that step was needed.
+
+       *As implemented:* the upstream `plugin-validate` action can't be used. It runs `pip install git+…hermes-agent`, and Hermes's `setup.py` refuses wheel builds outside Nix. CI clones Hermes and installs it editable instead. The validator's security scan walks the whole directory, so `scripts/validate_plugin.sh` validates a scratch copy of the git-tracked files. That keeps `.venv/` and `_deps/` out of the scan, and it matches what the catalog installs.
   - **Accept:** `hermes plugins validate .` prints `✓ declared hooks — matches registrations` and exits 0, both locally and in CI.
 
-- [ ] **T0.5 Hermes compatibility matrix** (depends on T0.4)
+- [x] **T0.5 Hermes compatibility matrix** (depends on T0.4)
   - **Why:** The original bug came from coding against an assumed Hermes contract. Pinning one Hermes SHA reproduces today's behaviour, but the manifest will advertise a *range* (`requires_hermes`). CI has to prove that range.
   - **Do:**
     1. Declare the supported range as `>=0.21,<0.22` for now. Widen it only after CI proves the wider range.
@@ -254,6 +256,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
        - replays the contract fixtures through Hermes's own `invoke_hook` with the plugin loaded.
     4. When bumping the known-good pin or widening the range, update this list and the §2 tables in the same PR.
   - **Accept:** All three blocking matrix entries are green. Deliberately renaming a key in the fixture makes the job fail.
+  - *As implemented:* the matrix found two real differences in 0.21.0: it doesn't send `post_api_request.first_chunk_at`, and it never fires `agent_loop_stopped`. It also has no `hermes plugins validate` command. The fixture marks those as `optional_reads`/`optional_hook`. The plugin must record UNKNOWN when they're absent, and every other key is enforced on every version. The validator step runs only where the command exists.
 
 ---
 

@@ -5,7 +5,7 @@ description: >-
   flight recorder, /minefield wtf incident analysis, and review-gated
   contribution/issue workflows. Opt-in. Never auto-uploads.
 author: Blackwellboy
-hooks:
+provides_hooks:
   - pre_tool_call
   - post_tool_call
   - pre_llm_call
