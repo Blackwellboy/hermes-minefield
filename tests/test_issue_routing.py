@@ -90,16 +90,14 @@ def test_hostile_model_output_cannot_alter_recommendation():
 def test_contribute_github_hermes_ui_routes(tmp_hermes_home):
     from hermes_minefield.commands.contribute import run_contribute
     from hermes_minefield.incident.analyze import analyze_events
-    from hermes_minefield.recorder.events import RecorderEvent, TOOL_EXECUTED, TOOL_PREPARED
+    from hermes_minefield.recorder.events import TOOL_EXECUTED, TOOL_PREPARED, RecorderEvent
 
     events = [
         RecorderEvent(type=TOOL_PREPARED, tool_name="search_files", tool_arg_fingerprint="a")
         for _ in range(20)
     ]
     events.append(
-        RecorderEvent(
-            type=TOOL_EXECUTED, tool_name="search_files", tool_arg_fingerprint="a", success=True
-        )
+        RecorderEvent(type=TOOL_EXECUTED, tool_name="search_files", tool_arg_fingerprint="a", success=True)
     )
     art = analyze_events(events, persist=True)
     out = run_contribute(incident_id=art.incident_id, github=True, dry_run=True)
@@ -110,10 +108,11 @@ def test_contribute_github_hermes_ui_routes(tmp_hermes_home):
 
 
 def test_contribute_unknown_requires_selection(tmp_hermes_home):
+    import time
+
     from hermes_minefield.commands.contribute import run_contribute
     from hermes_minefield.incident.store import save_incident
     from hermes_minefield.incident.types import IncidentArtifact
-    import time
 
     art = IncidentArtifact(
         incident_id="INC-TEST-UNK",

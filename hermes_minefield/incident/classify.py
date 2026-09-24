@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Iterable, Optional, Sequence
 
 from ..recorder.events import (
     API_ERROR,
@@ -15,17 +15,15 @@ from ..recorder.events import (
 )
 from .types import (
     AGENT_TOOL_LOOP,
-    CONFIGURATION_ERROR,
     EXPECTED_BEHAVIOUR,
     HERMES_UI_ORCHESTRATION,
     MODEL_SERVER_BUG,
-    PERFORMANCE_CONTENTION,
     SEVERITY_ANNOYING,
     SEVERITY_HIGH,
     SEVERITY_LOW,
     SEVERITY_MEDIUM,
-    UNKNOWN,
     UI_RENDERING_BUG,
+    UNKNOWN,
 )
 
 
@@ -39,7 +37,7 @@ class AnalysisSignals:
     total_executed: int
     total_api_errors: int
     window_seconds: float
-    dominant_tool: Optional[str]
+    dominant_tool: str | None
 
 
 def compute_signals(events: Sequence[RecorderEvent]) -> AnalysisSignals:
@@ -116,16 +114,12 @@ def classify(signals: AnalysisSignals) -> ClassificationResult:
                 "UI/event renderer repeatedly surfaced the preparation state "
                 "while the same operation/model turn was pending."
             ),
-            recommended_action=(
-                "dedupe repeated preparation-state rendering by request/event identity."
-            ),
+            recommended_action=("dedupe repeated preparation-state rendering by request/event identity."),
             serving_failure=False,
             is_engineering_bug=True,
             is_minefield_trap=False,
             confidence="HIGH",
-            observed_symptom=(
-                f"{prep} `{tool}` preparation events in {window:.0f} seconds."
-            ),
+            observed_symptom=(f"{prep} `{tool}` preparation events in {window:.0f} seconds."),
         )
 
     # Fixture B pattern: many executes with equivalent args
@@ -133,19 +127,14 @@ def classify(signals: AnalysisSignals) -> ClassificationResult:
         return ClassificationResult(
             classification=AGENT_TOOL_LOOP,
             severity=SEVERITY_HIGH,
-            likely_root_cause=(
-                "agent tool loop repeatedly selected materially identical tool requests."
-            ),
-            recommended_action=(
-                "add equivalent-tool-call suppression / loop breaker."
-            ),
+            likely_root_cause=("agent tool loop repeatedly selected materially identical tool requests."),
+            recommended_action=("add equivalent-tool-call suppression / loop breaker."),
             serving_failure=False,
             is_engineering_bug=True,
             is_minefield_trap=False,
             confidence="HIGH",
             observed_symptom=(
-                f"{prep} `{tool}` preparations; {exe} executions "
-                f"({equiv} equivalent-argument repeats)."
+                f"{prep} `{tool}` preparations; {exe} executions ({equiv} equivalent-argument repeats)."
             ),
         )
 

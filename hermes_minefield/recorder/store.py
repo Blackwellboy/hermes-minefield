@@ -8,7 +8,6 @@ import time
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Deque, List, Optional
 
 from ..config import (
     DEFAULT_RECORDER_MAX_BYTES,
@@ -22,8 +21,8 @@ from .events import RecorderEvent
 @dataclass
 class RecorderStats:
     events_in_memory: int
-    oldest_ts: Optional[float]
-    newest_ts: Optional[float]
+    oldest_ts: float | None
+    newest_ts: float | None
     retention_seconds: int
     max_events: int
     max_bytes: int
@@ -47,13 +46,13 @@ def events_jsonl_path() -> Path:
 
 def load_recent_persisted_events(
     *,
-    since_seconds: Optional[float] = None,
-    session_id_hash: Optional[str] = None,
+    since_seconds: float | None = None,
+    session_id_hash: str | None = None,
     retention_seconds: int = DEFAULT_RECORDER_RETENTION_SECONDS,
     max_events: int = DEFAULT_RECORDER_MAX_EVENTS,
     max_bytes: int = DEFAULT_RECORDER_MAX_BYTES,
-    path: Optional[Path] = None,
-    now: Optional[float] = None,
+    path: Path | None = None,
+    now: float | None = None,
 ) -> list[RecorderEvent]:
     """Bounded reader for recent persisted recorder events.
 
@@ -158,19 +157,19 @@ class FlightRecorder:
         max_events: int = DEFAULT_RECORDER_MAX_EVENTS,
         max_bytes: int = DEFAULT_RECORDER_MAX_BYTES,
         persist: bool = True,
-        path: Optional[Path] = None,
+        path: Path | None = None,
     ) -> None:
         self.retention_seconds = retention_seconds
         self.max_events = max_events
         self.max_bytes = max_bytes
         self.persist = persist
         self._path = path  # optional override for tests
-        self._buf: Deque[RecorderEvent] = deque()
+        self._buf: deque[RecorderEvent] = deque()
         self._approx_bytes = 0
         self._lock = threading.RLock()
-        self._pending_flush: List[dict] = []
+        self._pending_flush: list[dict] = []
         self._last_flush = 0.0
-        self.last_freeze: Optional[FreezeResult] = None
+        self.last_freeze: FreezeResult | None = None
 
     def _jsonl_path(self) -> Path:
         return self._path or events_jsonl_path()
@@ -250,8 +249,8 @@ class FlightRecorder:
     def freeze(
         self,
         *,
-        since_seconds: Optional[float] = None,
-        session_id_hash: Optional[str] = None,
+        since_seconds: float | None = None,
+        session_id_hash: str | None = None,
         include_persisted: bool = True,
     ) -> list[RecorderEvent]:
         return self.freeze_detailed(
@@ -263,8 +262,8 @@ class FlightRecorder:
     def freeze_detailed(
         self,
         *,
-        since_seconds: Optional[float] = None,
-        session_id_hash: Optional[str] = None,
+        since_seconds: float | None = None,
+        session_id_hash: str | None = None,
         include_persisted: bool = True,
     ) -> FreezeResult:
         """Freeze memory (+ recent persisted) for WTF analysis."""
@@ -344,7 +343,7 @@ class FlightRecorder:
 
 
 # Process singleton used by hooks + commands
-_GLOBAL: Optional[FlightRecorder] = None
+_GLOBAL: FlightRecorder | None = None
 _GLOBAL_LOCK = threading.Lock()
 
 

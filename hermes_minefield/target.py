@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
+from typing import Any
 
 from .config import load_hermes_config
 
@@ -11,13 +12,13 @@ from .config import load_hermes_config
 @dataclass(frozen=True)
 class ResolvedTarget:
     base_url: str
-    model: Optional[str]
-    provider: Optional[str]
+    model: str | None
+    provider: str | None
     source: str
     notes: tuple[str, ...] = ()
 
 
-def _as_str(value: Any) -> Optional[str]:
+def _as_str(value: Any) -> str | None:
     if value is None:
         return None
     s = str(value).strip()
@@ -26,9 +27,9 @@ def _as_str(value: Any) -> Optional[str]:
 
 def resolve_target(
     *,
-    base_url: Optional[str] = None,
-    model: Optional[str] = None,
-    config: Optional[Mapping[str, Any]] = None,
+    base_url: str | None = None,
+    model: str | None = None,
+    config: Mapping[str, Any] | None = None,
 ) -> ResolvedTarget:
     """Resolve chat-completions base URL + model id.
 

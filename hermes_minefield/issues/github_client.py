@@ -10,8 +10,9 @@ import json
 import os
 import urllib.error
 import urllib.request
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence
+from typing import Any
 
 from .approval import ApprovalDecision, evaluate_approval
 from .dedupe import map_github_state
@@ -20,8 +21,8 @@ from .dedupe import map_github_state
 @dataclass
 class SubmitResult:
     submitted: bool
-    url: Optional[str]
-    error: Optional[str]
+    url: str | None
+    error: str | None
     dry_run: bool
 
 
@@ -38,8 +39,7 @@ def assert_repo_allowed(
         return
     if repo not in set(allowlist):
         raise PermissionError(
-            f"ARBITRARY_REPO_SUBMISSION=BLOCKED: {repo} not in allowlist "
-            f"and not explicitly selected by user"
+            f"ARBITRARY_REPO_SUBMISSION=BLOCKED: {repo} not in allowlist and not explicitly selected by user"
         )
 
 
@@ -50,11 +50,11 @@ def submit_issue(
     body: str,
     allowlist: Sequence[str],
     user_selected_repo: bool,
-    user_reply: Optional[str] = None,
+    user_reply: str | None = None,
     cli_approve: bool = False,
     from_model: bool = False,
     dry_run: bool = True,
-    token: Optional[str] = None,
+    token: str | None = None,
 ) -> SubmitResult:
     assert_repo_allowed(repo, allowlist=allowlist, user_selected=user_selected_repo)
     decision: ApprovalDecision = evaluate_approval(
@@ -97,8 +97,8 @@ def refresh_issue_status(
     *,
     repo: str,
     number: int,
-    token: Optional[str] = None,
-    linked_resolution: Optional[str] = None,
+    token: str | None = None,
+    linked_resolution: str | None = None,
 ) -> dict[str, Any]:
     tok = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     url = f"https://api.github.com/repos/{repo}/issues/{int(number)}"

@@ -5,13 +5,13 @@ from __future__ import annotations
 import time
 
 from hermes_minefield.privacy import arg_fingerprint, redact_text
-from hermes_minefield.recorder.events import RecorderEvent, TOOL_PREPARED
+from hermes_minefield.recorder.events import TOOL_PREPARED, RecorderEvent
 from hermes_minefield.recorder.store import FlightRecorder
 
 
 def test_recorder_retention_and_max_events():
     rec = FlightRecorder(retention_seconds=1, max_events=10, max_bytes=10_000_000, persist=False)
-    for i in range(20):
+    for _i in range(20):
         rec.record(RecorderEvent(type=TOOL_PREPARED, tool_name="t", ts=time.time()))
     assert rec.stats().events_in_memory <= 10
     time.sleep(1.1)
@@ -22,7 +22,7 @@ def test_recorder_retention_and_max_events():
 
 def test_recorder_byte_ceiling():
     rec = FlightRecorder(retention_seconds=600, max_events=5000, max_bytes=2000, persist=False)
-    for i in range(200):
+    for _i in range(200):
         rec.record(
             RecorderEvent(
                 type=TOOL_PREPARED,

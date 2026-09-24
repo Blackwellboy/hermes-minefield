@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence
+from typing import Any
 
 
 @dataclass
 class DedupeHit:
     match: str  # MATCH | POSSIBLE_MATCH | NO_MATCH
-    issue_ref: Optional[str]
+    issue_ref: str | None
     title: str
     status: str
     reason: str
@@ -60,7 +61,7 @@ def search_local(
     return hits[:limit]
 
 
-def map_github_state(gh_state: str, *, linked_resolution: Optional[str] = None) -> str:
+def map_github_state(gh_state: str, *, linked_resolution: str | None = None) -> str:
     """Closed ≠ FIXED unless resolution evidence exists."""
     s = (gh_state or "").lower()
     if s == "open":

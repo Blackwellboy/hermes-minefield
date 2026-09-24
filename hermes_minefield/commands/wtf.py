@@ -1,19 +1,18 @@
-""" /minefield wtf — freeze recorder + classify incident."""
+"""/minefield wtf — freeze recorder + classify incident."""
 
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 from ..incident.analyze import analyze_events, render_incident
 from ..privacy import stable_hash
 from ..recorder.store import get_recorder
 
-
 _DURATION_RE = re.compile(r"^(\d+)\s*([smh])?$", re.I)
 
 
-def parse_window(raw: Optional[str], default_seconds: float = 300.0) -> float:
+def parse_window(raw: str | None, default_seconds: float = 300.0) -> float:
     if not raw:
         return default_seconds
     raw = raw.strip()
@@ -34,8 +33,8 @@ def parse_window(raw: Optional[str], default_seconds: float = 300.0) -> float:
 
 def run_wtf(
     *,
-    window: Optional[str] = None,
-    session: Optional[str] = None,
+    window: str | None = None,
+    session: str | None = None,
     persist: bool = True,
 ) -> dict[str, Any]:
     since = parse_window(window, default_seconds=300.0)

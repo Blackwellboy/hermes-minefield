@@ -6,7 +6,7 @@ import json
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .paths import cache_dir
 
@@ -43,7 +43,7 @@ def save_cache(data: dict[str, Any]) -> None:
     p.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
 
 
-def get_entry(fingerprint: str) -> Optional[CacheEntry]:
+def get_entry(fingerprint: str) -> CacheEntry | None:
     data = load_cache()
     raw = (data.get("entries") or {}).get(fingerprint)
     if not isinstance(raw, dict):

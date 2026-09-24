@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import time
 
 from hermes_minefield.commands.dispatch import handle_slash
 from hermes_minefield.incident.analyze import analyze_events
-from hermes_minefield.recorder.events import RecorderEvent, TOOL_EXECUTED, TOOL_PREPARED
-from hermes_minefield.recorder.store import get_recorder
+from hermes_minefield.recorder.events import TOOL_EXECUTED, TOOL_PREPARED, RecorderEvent
 
 
 def test_slash_help():
@@ -27,7 +25,9 @@ def test_slash_status(tmp_hermes_home, monkeypatch):
         }
     }
     (tmp_hermes_home / "config.yaml").write_text(
-        __import__("yaml").dump(cfg) if False else "model:\n  default: test\n  base_url: http://127.0.0.1:9/v1\n",
+        __import__("yaml").dump(cfg)
+        if False
+        else "model:\n  default: test\n  base_url: http://127.0.0.1:9/v1\n",
         encoding="utf-8",
     )
     text = handle_slash("status")

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Mapping, Optional, Sequence
-
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from typing import Any
 
 DEFAULT_LITE_MAX_REQUESTS = 5
 DEFAULT_RECORDER_RETENTION_SECONDS = 600  # ~10 minutes
@@ -32,7 +32,7 @@ class MinefieldPluginConfig:
     fingerprint_cache_ttl_days: int = 30
 
     @classmethod
-    def from_mapping(cls, data: Optional[Mapping[str, Any]] = None) -> "MinefieldPluginConfig":
+    def from_mapping(cls, data: Mapping[str, Any] | None = None) -> MinefieldPluginConfig:
         data = data or {}
         section = data
         if "minefield" in data and isinstance(data["minefield"], Mapping):
@@ -65,9 +65,7 @@ class MinefieldPluginConfig:
             recorder_max_events=int(section.get("recorder_max_events", DEFAULT_RECORDER_MAX_EVENTS)),
             recorder_max_bytes=int(section.get("recorder_max_bytes", DEFAULT_RECORDER_MAX_BYTES)),
             repo_allowlist=allow_t,
-            fingerprint_cache_ttl_days=int(
-                section.get("fingerprint_cache_ttl_days", 30)
-            ),
+            fingerprint_cache_ttl_days=int(section.get("fingerprint_cache_ttl_days", 30)),
         )
 
 
@@ -75,6 +73,7 @@ def load_hermes_config() -> dict[str, Any]:
     """Best-effort load of ~/.hermes/config.yaml. Never raises."""
     try:
         import yaml
+
         from .paths import hermes_home
 
         path = hermes_home() / "config.yaml"
@@ -86,5 +85,5 @@ def load_hermes_config() -> dict[str, Any]:
         return {}
 
 
-def load_plugin_config(cfg: Optional[Mapping[str, Any]] = None) -> MinefieldPluginConfig:
+def load_plugin_config(cfg: Mapping[str, Any] | None = None) -> MinefieldPluginConfig:
     return MinefieldPluginConfig.from_mapping(cfg if cfg is not None else load_hermes_config())

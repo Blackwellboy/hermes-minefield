@@ -5,7 +5,7 @@ Never executes trap prose. Matching is keyword/signature based on titles + tags.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 
 def _load_registry() -> list[dict[str, Any]]:
@@ -59,8 +59,7 @@ def match_traps(
         score = sum(1 for k in keywords if k in blob)
         tags = t.get("tags") or t.get("labels") or []
         if serving_failure and any(
-            str(x).lower() in {"serving", "runtime", "llama.cpp", "vllm", "sglang"}
-            for x in tags
+            str(x).lower() in {"serving", "runtime", "llama.cpp", "vllm", "sglang"} for x in tags
         ):
             score += 2
         if score >= 2:

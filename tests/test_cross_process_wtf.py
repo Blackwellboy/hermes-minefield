@@ -18,7 +18,6 @@ from hermes_minefield.recorder.events import (
 from hermes_minefield.recorder.store import (
     FlightRecorder,
     load_recent_persisted_events,
-    merge_events,
     reset_recorder_for_tests,
 )
 
@@ -262,9 +261,7 @@ def test_h_session_filter(tmp_hermes_home, rec_path):
         tool_name="t",
     )
     _write_events(rec_path, [a, b])
-    loaded = load_recent_persisted_events(
-        since_seconds=60, session_id_hash="aaa", path=rec_path, now=now
-    )
+    loaded = load_recent_persisted_events(since_seconds=60, session_id_hash="aaa", path=rec_path, now=now)
     assert [e.event_id for e in loaded] == ["sa"]
 
 

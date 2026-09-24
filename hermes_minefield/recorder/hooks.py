@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Optional
+from typing import Any
 
 from ..privacy import arg_fingerprint, stable_hash
 from .events import (
     API_ERROR,
     API_REQUEST,
     API_RESPONSE,
-    RecorderEvent,
     SESSION_END,
     SESSION_START,
     TOOL_COMPLETED,
@@ -20,11 +19,12 @@ from .events import (
     TOOL_REQUESTED,
     TURN_END,
     TURN_START,
+    RecorderEvent,
 )
 from .store import get_recorder
 
 
-def _session_hash(session_id: Any) -> Optional[str]:
+def _session_hash(session_id: Any) -> str | None:
     if not session_id:
         return None
     return stable_hash(str(session_id), n=16)
@@ -118,9 +118,7 @@ def on_pre_llm_call(**kwargs) -> None:
             type=TURN_START,
             session_id_hash=sid,
             model_hash=stable_hash(model, n=12) if model else None,
-            request_id_hash=stable_hash(kw.get("request_id"), n=12)
-            if kw.get("request_id")
-            else None,
+            request_id_hash=stable_hash(kw.get("request_id"), n=12) if kw.get("request_id") else None,
         )
     )
 
@@ -141,9 +139,7 @@ def on_post_llm_call(**kwargs) -> None:
             content_len=content_len,
             reasoning_len=reasoning_len,
             wall_ms=_as_float(kw.get("wall_ms") or kw.get("duration_ms")),
-            request_id_hash=stable_hash(kw.get("request_id"), n=12)
-            if kw.get("request_id")
-            else None,
+            request_id_hash=stable_hash(kw.get("request_id"), n=12) if kw.get("request_id") else None,
         )
     )
 
@@ -157,9 +153,7 @@ def on_pre_api_request(**kwargs) -> None:
             type=API_REQUEST,
             session_id_hash=sid,
             model_hash=stable_hash(kw.get("model"), n=12) if kw.get("model") else None,
-            request_id_hash=stable_hash(kw.get("request_id"), n=12)
-            if kw.get("request_id")
-            else None,
+            request_id_hash=stable_hash(kw.get("request_id"), n=12) if kw.get("request_id") else None,
             extra={"t0": time.time()},
         )
     )
@@ -179,9 +173,7 @@ def on_post_api_request(**kwargs) -> None:
             reasoning_len=_as_int(kw.get("reasoning_len")),
             wall_ms=_as_float(kw.get("wall_ms") or kw.get("duration_ms")),
             ttft_ms=_as_float(kw.get("ttft_ms")),
-            request_id_hash=stable_hash(kw.get("request_id"), n=12)
-            if kw.get("request_id")
-            else None,
+            request_id_hash=stable_hash(kw.get("request_id"), n=12) if kw.get("request_id") else None,
         )
     )
 
@@ -233,18 +225,18 @@ def on_session_finalize(**kwargs) -> None:
     on_session_end(**kwargs)
 
 
-def _as_str(v: Any) -> Optional[str]:
+def _as_str(v: Any) -> str | None:
     return str(v) if v is not None else None
 
 
-def _as_int(v: Any) -> Optional[int]:
+def _as_int(v: Any) -> int | None:
     try:
         return int(v) if v is not None else None
     except Exception:
         return None
 
 
-def _as_float(v: Any) -> Optional[float]:
+def _as_float(v: Any) -> float | None:
     try:
         return float(v) if v is not None else None
     except Exception:

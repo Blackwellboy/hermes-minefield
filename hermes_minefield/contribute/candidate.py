@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any
 
 from ..issues.sanitize import sanitize_packet
 from ..paths import candidates_dir
@@ -30,9 +31,9 @@ class CandidatePacket:
     kind: str  # product_bug | minefield_trap | unsure
     title: str
     summary: str
-    incident_id: Optional[str] = None
+    incident_id: str | None = None
     evidence: dict[str, Any] = field(default_factory=dict)
-    official_trap_number: Optional[str] = None  # always None until maintainer acceptance
+    official_trap_number: str | None = None  # always None until maintainer acceptance
     notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -43,7 +44,7 @@ def classify_contribution_kind(
     *,
     serving_failure: bool,
     is_engineering_bug: bool,
-    user_choice: Optional[str] = None,
+    user_choice: str | None = None,
 ) -> str:
     if user_choice in {"1", "product", "product_bug", "engineering"}:
         return "product_bug"
@@ -61,8 +62,8 @@ def classify_contribution_kind(
 def build_candidate(
     *,
     artifact: Mapping[str, Any],
-    kind: Optional[str] = None,
-    user_choice: Optional[str] = None,
+    kind: str | None = None,
+    user_choice: str | None = None,
 ) -> CandidatePacket:
     serving = bool(artifact.get("serving_failure"))
     eng = bool(artifact.get("is_engineering_bug"))

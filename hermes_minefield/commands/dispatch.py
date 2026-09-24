@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shlex
-from typing import Any, Optional
+from typing import Any
 
 from ..cache import clear_cache
 from .check import run_check
@@ -87,7 +87,7 @@ def handle_slash(raw_args: str) -> str:
     def _flag(name: str) -> bool:
         return name in rest
 
-    def _opt(name: str) -> Optional[str]:
+    def _opt(name: str) -> str | None:
         if name in rest:
             i = rest.index(name)
             if i + 1 < len(rest):

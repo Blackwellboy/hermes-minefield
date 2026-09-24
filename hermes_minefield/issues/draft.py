@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any
 
 from ..paths import drafts_dir
 from .sanitize import sanitize_issue_body, sanitize_packet
@@ -23,8 +24,8 @@ class IssueDraft:
     evidence: str
     impact: str
     sanitization_notes: list[str] = field(default_factory=list)
-    target_repo: Optional[str] = None
-    incident_id: Optional[str] = None
+    target_repo: str | None = None
+    incident_id: str | None = None
     body: str = ""
 
     def render_body(self) -> str:
@@ -63,8 +64,8 @@ class IssueDraft:
 def build_issue_draft(
     *,
     artifact: Mapping[str, Any],
-    target_repo: Optional[str] = None,
-    environment: Optional[Mapping[str, Any]] = None,
+    target_repo: str | None = None,
+    environment: Mapping[str, Any] | None = None,
 ) -> IssueDraft:
     classification = str(artifact.get("classification") or "UNKNOWN")
     symptom = str(artifact.get("observed_symptom") or "unspecified symptom")
@@ -73,8 +74,7 @@ def build_issue_draft(
     draft = IssueDraft(
         title=title,
         summary=sanitize_issue_body(
-            f"Incident classified as {classification}. "
-            f"{artifact.get('likely_root_cause') or ''}"
+            f"Incident classified as {classification}. {artifact.get('likely_root_cause') or ''}"
         ),
         environment=env,
         minimal_repro=sanitize_issue_body(

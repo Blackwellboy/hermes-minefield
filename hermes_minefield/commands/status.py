@@ -1,9 +1,9 @@
-""" /minefield status """
+"""/minefield status"""
 
 from __future__ import annotations
 
 import time
-from typing import Any, Optional
+from typing import Any
 
 from ..cache import get_entry, load_cache
 from ..config import load_plugin_config
@@ -13,7 +13,7 @@ from ..render import extract_summary_counts, render_status
 from ..target import resolve_target
 
 
-def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -> dict[str, Any]:
+def run_status(*, base_url: str | None = None, model: str | None = None) -> dict[str, Any]:
     cfg = load_plugin_config()
     fp_short = None
     cache_age = None
@@ -26,7 +26,7 @@ def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -
         entry = get_entry(fp.key)
         if entry:
             age_s = time.time() - entry.checked_at
-            cache_age = f"{age_s/60:.1f}m ago ({entry.mode})"
+            cache_age = f"{age_s / 60:.1f}m ago ({entry.mode})"
             _, clean, problem, inconclusive = extract_summary_counts(entry.summary)
             # Prefer repaired counts from findings when legacy cache stored zeros.
             if (entry.clean, entry.problem, entry.inconclusive) == (0, 0, 0) and (
@@ -37,10 +37,7 @@ def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -
                 c, p, i = clean, problem, inconclusive
             else:
                 c, p, i = entry.clean, entry.problem, entry.inconclusive
-            last_summary = (
-                f"  clean={c} problem={p} "
-                f"inconclusive={i} requests={entry.requests_executed}"
-            )
+            last_summary = f"  clean={c} problem={p} inconclusive={i} requests={entry.requests_executed}"
     except Exception as e:
         cache_age = f"target unresolved: {type(e).__name__}"
 
@@ -75,5 +72,5 @@ def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -
         last_summary=last_summary,
         auto_lite=cfg.auto_lite,
     )
-    n_cache = len((load_cache().get("entries") or {}))
+    n_cache = len(load_cache().get("entries") or {})
     return {"ok": True, "text": text, "cache_entries": n_cache, "recorder": stats.__dict__}

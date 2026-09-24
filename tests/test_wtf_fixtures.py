@@ -6,8 +6,6 @@ import json
 import time
 from pathlib import Path
 
-import pytest
-
 from hermes_minefield.incident.analyze import analyze_events
 from hermes_minefield.recorder.events import RecorderEvent
 

@@ -1,12 +1,12 @@
-""" /minefield contribute — sanitized candidate + optional GitHub draft."""
+"""/minefield contribute — sanitized candidate + optional GitHub draft."""
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from ..config import load_plugin_config
 from ..contribute.candidate import build_candidate, save_candidate
-from ..incident.store import load_incident, list_incidents
+from ..incident.store import list_incidents, load_incident
 from ..issues.dedupe import search_local
 from ..issues.draft import build_issue_draft, save_draft
 from ..issues.github_client import submit_issue
@@ -16,15 +16,15 @@ from ..target import resolve_target
 
 def run_contribute(
     *,
-    incident_id: Optional[str] = None,
-    kind: Optional[str] = None,
+    incident_id: str | None = None,
+    kind: str | None = None,
     github: bool = False,
-    target_repo: Optional[str] = None,
+    target_repo: str | None = None,
     user_selected_repo: bool = False,
     approve: bool = False,
-    user_reply: Optional[str] = None,
+    user_reply: str | None = None,
     from_model: bool = False,
-    model_suggested_repo: Optional[str] = None,
+    model_suggested_repo: str | None = None,
     dry_run: bool = True,
 ) -> dict[str, Any]:
     cfg = load_plugin_config()
@@ -49,7 +49,7 @@ def run_contribute(
         f"  candidate: {packet.candidate_id}",
         f"  kind:      {packet.kind}",
         f"  state:     {packet.state}",
-        f"  trap #:    (none — assigned only after maintainer acceptance)",
+        "  trap #:    (none — assigned only after maintainer acceptance)",
         f"  saved:     {path}",
         "",
         "What is this?",
@@ -166,9 +166,7 @@ def run_contribute(
                     "dry_run": sub.dry_run,
                 }
                 if sub.submitted:
-                    lines.append(
-                        f"\nSubmit result: {'DRY-RUN OK' if sub.dry_run else 'SENT'} {sub.url}"
-                    )
+                    lines.append(f"\nSubmit result: {'DRY-RUN OK' if sub.dry_run else 'SENT'} {sub.url}")
                 else:
                     lines.append(f"\nSubmit blocked/failed: {sub.error}")
         except Exception as e:

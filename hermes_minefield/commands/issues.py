@@ -1,13 +1,12 @@
-""" /minefield issues — local incidents + linked GitHub status."""
+"""/minefield issues — local incidents + linked GitHub status."""
 
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 from ..incident.store import list_incidents, load_incident
 from ..issues.github_client import refresh_issue_status
-
 
 _GH_REF = re.compile(r"([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)#(\d+)")
 
@@ -27,12 +26,7 @@ def run_issues(
     for row in rows:
         iid = row.get("incident_id") or "?"
         full = load_incident(iid) or row
-        title = (
-            full.get("observed_symptom")
-            or row.get("symptom")
-            or full.get("classification")
-            or "untitled"
-        )
+        title = full.get("observed_symptom") or row.get("symptom") or full.get("classification") or "untitled"
         classification = full.get("classification") or row.get("classification") or "?"
         status = full.get("status") or row.get("status") or "OBSERVED"
         gh = full.get("github") or full.get("github_issue")

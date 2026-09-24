@@ -9,7 +9,6 @@ from hermes_minefield.issues.draft import build_issue_draft
 from hermes_minefield.issues.github_client import assert_repo_allowed, submit_issue
 from hermes_minefield.privacy import looks_like_approval
 
-
 ALLOW = ("Blackwellboy/model-serving-minefield", "NousResearch/hermes-agent")
 
 

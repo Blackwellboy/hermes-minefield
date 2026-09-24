@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from typing import Any
 
 
 def register_cli(subparser: argparse.ArgumentParser) -> None:
@@ -61,7 +60,7 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
     p_iss.add_argument("--limit", type=int, default=20)
     p_iss.add_argument("--refresh", action="store_true")
 
-    p_clear = subs.add_parser("clear-cache", help="Clear fingerprint Lite cache")
+    subs.add_parser("clear-cache", help="Clear fingerprint Lite cache")
 
     subparser.set_defaults(func=minefield_command)
 

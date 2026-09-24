@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from ..recorder.events import RecorderEvent
 from .classify import ClassificationResult, classify, compute_signals
@@ -15,10 +15,10 @@ from .types import IncidentArtifact
 def analyze_events(
     events: Sequence[RecorderEvent],
     *,
-    session_id_hash: Optional[str] = None,
-    model_fingerprint: Optional[str] = None,
-    runtime_fingerprint: Optional[str] = None,
-    since_seconds: Optional[float] = None,
+    session_id_hash: str | None = None,
+    model_fingerprint: str | None = None,
+    runtime_fingerprint: str | None = None,
+    since_seconds: float | None = None,
     persist: bool = True,
 ) -> IncidentArtifact:
     signals = compute_signals(events)
@@ -104,20 +104,20 @@ def render_incident(artifact: IncidentArtifact) -> str:
         "MINEFIELD INCIDENT",
         "",
         f"ID: {artifact.incident_id}",
-        f"Observed:",
+        "Observed:",
         f"  {artifact.observed_symptom}",
         "",
         f"ACTUAL_EXECUTIONS={exec_total}",
         f"REPEATED_EQUIVALENT_CALLS={equiv}",
         f"DOMINANT_TOOL={dominant_tool or 'unknown'}",
         f"NO_PROGRESS_STREAK={no_progress_streak}",
-        f"GUARD_WARNINGS=unknown",
-        f"GUARD_BLOCKS=unknown",
+        "GUARD_WARNINGS=unknown",
+        "GUARD_BLOCKS=unknown",
         f"Actual executions: {exec_total}",
         f"Preparations:      {prep_total}",
         f"Repeated equivalent calls: {equiv}",
         "",
-        f"Likely cause:",
+        "Likely cause:",
         f"  {artifact.likely_root_cause}",
         "",
         f"Classification: {artifact.classification}",
@@ -126,7 +126,7 @@ def render_incident(artifact: IncidentArtifact) -> str:
         f"Known Minefield trap: {trap_line}",
         f"Engineering bug (not trap): {'YES' if artifact.is_engineering_bug and not artifact.is_minefield_trap else 'NO'}",
         "",
-        f"Recommendation:",
+        "Recommendation:",
         f"  {artifact.recommended_action}",
         "",
         "Create local bug candidate?  (use: /minefield contribute)",

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Optional
+from typing import Any
 
 from ..cache import CacheEntry, get_entry, put_entry
 from ..config import DEFAULT_LITE_MAX_REQUESTS, load_plugin_config
@@ -14,9 +14,9 @@ from ..target import resolve_target
 
 def run_check(
     *,
-    base_url: Optional[str] = None,
-    model: Optional[str] = None,
-    max_requests: Optional[int] = None,
+    base_url: str | None = None,
+    model: str | None = None,
+    max_requests: int | None = None,
     detect: bool = True,
     force: bool = False,
 ) -> dict[str, Any]:
@@ -102,9 +102,7 @@ def run_check(
             inconclusive=summary_dict["inconclusive"],
         )
     )
-    text = render_lite_summary(
-        summary_dict, requests=result.requests_executed, fingerprint_short=fp.short()
-    )
+    text = render_lite_summary(summary_dict, requests=result.requests_executed, fingerprint_short=fp.short())
     return {
         "ok": True,
         "cached": False,

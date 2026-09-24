@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from ..concurrency import doctor_guard_message, probe_concurrency, requires_doctor_confirm
 from ..render import render_doctor_summary
@@ -11,10 +11,10 @@ from ..target import resolve_target
 
 def run_doctor(
     *,
-    base_url: Optional[str] = None,
-    model: Optional[str] = None,
+    base_url: str | None = None,
+    model: str | None = None,
     yes: bool = False,
-    max_requests: Optional[int] = None,
+    max_requests: int | None = None,
     detect: bool = True,
 ) -> dict[str, Any]:
     # Resolve target + concurrency guard BEFORE importing Minefield so a

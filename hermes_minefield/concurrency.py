@@ -6,13 +6,12 @@ import json
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from typing import Any, Optional
 from urllib.parse import urlparse
 
 
 @dataclass(frozen=True)
 class ConcurrencyInfo:
-    known_concurrency: Optional[int]
+    known_concurrency: int | None
     single_slot_likely: bool
     source: str
     detail: str

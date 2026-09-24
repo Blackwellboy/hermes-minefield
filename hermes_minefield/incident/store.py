@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ..paths import incidents_dir
 from .types import IncidentArtifact
@@ -32,7 +32,7 @@ def save_incident(artifact: IncidentArtifact) -> Path:
     return path
 
 
-def load_incident(incident_id: str) -> Optional[dict[str, Any]]:
+def load_incident(incident_id: str) -> dict[str, Any] | None:
     path = incidents_dir() / f"{incident_id}.json"
     if not path.is_file():
         return None
