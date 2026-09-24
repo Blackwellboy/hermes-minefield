@@ -24,23 +24,35 @@ class ProbeOutcome:
     error: str | None = None
 
 
-def _finding_dict(f: Any) -> dict[str, Any]:
+def scrub(text: Any, secrets: tuple[str, ...] = ()) -> str:
+    """Exact-value scrub of known secrets, then generic redaction."""
+    out = str(text or "")
+    for secret in secrets:
+        if secret and len(secret) >= 8:
+            out = out.replace(secret, "[REDACTED]")
+    return redact_text(out)
+
+
+def _finding_dict(f: Any, secrets: tuple[str, ...] = ()) -> dict[str, Any]:
     def get(name: str, default: Any = "") -> Any:
         if isinstance(f, dict):
             return f.get(name, default)
         return getattr(f, name, default)
 
     return {
-        "level": get("level") or "",
-        "code": get("code") or "",
-        "title": get("title") or "",
-        "detail": get("detail") or "",
-        "traps": list(get("traps", ()) or ()),
+        "level": scrub(get("level"), secrets),
+        "code": scrub(get("code"), secrets),
+        "title": scrub(get("title"), secrets),
+        "detail": scrub(get("detail"), secrets),
+        "traps": [scrub(t, secrets) for t in (get("traps", ()) or ())],
     }
 
 
-def evaluate_run(result: Any, summary_fn) -> ProbeOutcome:
-    """Turn a minefield ``RunResult`` into a verdict + cacheable summary (or not)."""
+def evaluate_run(result: Any, summary_fn, *, secrets: tuple[str, ...] = ()) -> ProbeOutcome:
+    """Turn a minefield ``RunResult`` into a verdict + cacheable summary (or not).
+
+    ``secrets`` (e.g. the API key) are scrubbed from everything we keep or print.
+    """
     executed = int(getattr(result, "requests_executed", 0) or 0)
     budget = getattr(result, "request_budget", None)
 
@@ -57,7 +69,7 @@ def evaluate_run(result: Any, summary_fn) -> ProbeOutcome:
 
     error = getattr(result, "error", None)
     if getattr(result, "reachable", True) is False or error:
-        err = redact_text(str(error or "target_unreachable"))
+        err = scrub(error or "target_unreachable", secrets)
         return ProbeOutcome(
             ok=False,
             verdict=V.UNKNOWN,
@@ -69,7 +81,7 @@ def evaluate_run(result: Any, summary_fn) -> ProbeOutcome:
         )
 
     summary = summary_fn(result)
-    findings = [_finding_dict(f) for f in (getattr(summary, "findings", None) or [])]
+    findings = [_finding_dict(f, secrets) for f in (getattr(summary, "findings", None) or [])]
     clean = int(getattr(summary, "clean_count", 0) or 0)
     problem = int(getattr(summary, "problem_count", 0) or 0)
     inconclusive = int(getattr(summary, "inconclusive_count", 0) or 0)

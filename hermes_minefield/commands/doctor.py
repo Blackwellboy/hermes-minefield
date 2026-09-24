@@ -34,7 +34,7 @@ def run_doctor(
 
     # Concurrency guard BEFORE importing Minefield, so a blocked single-slot run
     # never depends on minefield being importable and never issues Doctor requests.
-    info = probe_concurrency(target.base_url)
+    info = probe_concurrency(target.base_url, api_key=target.api_key)
     concurrency = {
         "known_concurrency": info.known_concurrency,
         "single_slot_likely": info.single_slot_likely,
@@ -59,9 +59,10 @@ def run_doctor(
         max_requests=max_requests,
         model=target.model,
         detect=detect,
+        api_key=target.api_key,
     )
-    result = run_checks(plan, model=target.model)
-    outcome = evaluate_run(result, summarize)
+    result = run_checks(plan, model=target.model, api_key=target.api_key)
+    outcome = evaluate_run(result, summarize, secrets=(target.api_key or "",))
     prefix = "[single-slot confirmed via --yes]\n\n" if info.known_concurrency == 1 else ""
 
     if outcome.summary is None:

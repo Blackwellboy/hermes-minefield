@@ -91,11 +91,12 @@ def run_check(
         max_requests=budget,
         model=target.model,
         detect=detect,
+        api_key=target.api_key,
     )
     if plan.expected_requests > budget:
         raise RuntimeError(f"HARD_BUDGET_VIOLATION: plan expects {plan.expected_requests} > budget {budget}")
-    result = run_checks(plan, model=target.model)
-    outcome = evaluate_run(result, summarize)
+    result = run_checks(plan, model=target.model, api_key=target.api_key)
+    outcome = evaluate_run(result, summarize, secrets=(target.api_key or "",))
 
     if outcome.summary is None:
         return {

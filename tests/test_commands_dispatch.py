@@ -88,9 +88,9 @@ def test_doctor_guard_without_yes(tmp_hermes_home, monkeypatch):
     # Force unknown concurrency path
     monkeypatch.setattr(
         "hermes_minefield.commands.doctor.probe_concurrency",
-        lambda url: __import__("hermes_minefield.concurrency", fromlist=["ConcurrencyInfo"]).ConcurrencyInfo(
-            None, False, "unknown", "UNKNOWN"
-        ),
+        lambda url, **kw: __import__(
+            "hermes_minefield.concurrency", fromlist=["ConcurrencyInfo"]
+        ).ConcurrencyInfo(None, False, "unknown", "UNKNOWN"),
     )
     (tmp_hermes_home / "config.yaml").write_text(
         "model:\n  default: t\n  base_url: http://127.0.0.1:9/v1\n",

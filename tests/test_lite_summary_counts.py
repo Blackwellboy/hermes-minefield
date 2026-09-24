@@ -121,7 +121,7 @@ def test_check_summary_dict_uses_clean_count(monkeypatch, tmp_hermes_home):
     monkeypatch.setattr(
         check_mod,
         "resolve_target",
-        lambda **kw: type("T", (), {"model": "m", "base_url": "http://127.0.0.1:9/v1"})(),
+        lambda **kw: type("T", (), {"model": "m", "base_url": "http://127.0.0.1:9/v1", "api_key": None})(),
     )
 
     import minefield.api as api

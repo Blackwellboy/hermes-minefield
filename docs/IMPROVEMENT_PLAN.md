@@ -375,7 +375,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
        ```
   - **Accept:** Tests cover all 4 lookup locations and the bad-value cases.
 
-- [ ] **T2.3 Target resolution through Hermes, with API key support**
+- [x] **T2.3 Target resolution through Hermes, with API key support**
   - **Why:** F8.
   - **Do:**
     1. Add an `api_key: Optional[str] = field(default=None, repr=False)` field to `ResolvedTarget`. Use `repr=False` so it never prints.

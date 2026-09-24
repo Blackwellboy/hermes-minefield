@@ -35,3 +35,19 @@ def fresh_recorder(tmp_hermes_home):
     from hermes_minefield.recorder.store import reset_recorder_for_tests
 
     return reset_recorder_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def _isolate_hermes_runtime(monkeypatch):
+    """Unit tests must not depend on ambient provider credentials (AWS_*, OPENAI_*,
+    ...) that Hermes's resolution ladder would pick up. Tests of that path patch
+    resolve_runtime_provider themselves."""
+    try:
+        import hermes_cli.runtime_provider as rp
+    except ImportError:
+        return
+
+    def unconfigured(**kw):
+        raise RuntimeError("test isolation: no Hermes provider configured")
+
+    monkeypatch.setattr(rp, "resolve_runtime_provider", unconfigured)

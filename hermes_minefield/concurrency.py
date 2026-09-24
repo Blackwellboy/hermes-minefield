@@ -24,14 +24,15 @@ def _root_from_base(base_url: str) -> str:
     return u.rstrip("/") or base_url
 
 
-def probe_concurrency(base_url: str, *, timeout: float = 2.0) -> ConcurrencyInfo:
+def probe_concurrency(base_url: str, *, timeout: float = 2.0, api_key: str | None = None) -> ConcurrencyInfo:
     """Best-effort concurrency probe. Prefer UNKNOWN over false safety."""
     root = _root_from_base(base_url)
     # llama.cpp /props often exposes total_slots
     for path in ("/props", "/slots"):
         url = f"{root}{path}"
         try:
-            req = urllib.request.Request(url, method="GET")
+            headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+            req = urllib.request.Request(url, method="GET", headers=headers)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 body = resp.read(65536)
             data = json.loads(body.decode("utf-8", errors="replace"))
