@@ -66,12 +66,18 @@ def run_wtf(
     """Freeze + classify. ``save``: True/False forces; None saves only anomalies.
     ``persist=False`` (tests/legacy) never saves."""
     since = parse_window(window, default_seconds=300.0)
-    sid_hash = None
-    if session and session not in {"current", "all"}:
-        sid_hash = stable_hash(session, n=16)
-
     rec = get_recorder()
-    intro = f"yeah, that looked weird. freezing the last {since:.0f} seconds..."
+    session = (session or "current").strip()
+    if session == "all":
+        sid_hash, scope = None, "all sessions"
+    elif session == "current":
+        sid_hash = rec.current_session_hash()
+        scope = f"current session ({sid_hash[:8]}…)" if sid_hash else "all sessions (no session seen yet)"
+    else:
+        sid_hash = stable_hash(session, n=16)
+        scope = f"session {sid_hash[:8]}…"
+
+    intro = f"yeah, that looked weird. freezing the last {since:.0f} seconds...\nscope: {scope}"
     frozen = rec.freeze_detailed(since_seconds=since, session_id_hash=sid_hash)
     events = frozen.events
     artifact = analyze_events(
@@ -99,6 +105,7 @@ def run_wtf(
         "text": f"Minefield:\n{intro}\n\n{body}\n\n{V.line(verdict, reason)}",
         "incident_id": artifact.incident_id if should_save else None,
         "saved": should_save,
+        "scope": scope,
         "classification": artifact.classification,
         "severity": artifact.severity,
         "artifact": artifact.to_dict(),

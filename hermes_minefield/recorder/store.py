@@ -228,6 +228,7 @@ class FlightRecorder:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self.last_freeze: FreezeResult | None = None
+        self.last_session_hash: str | None = None
 
     # -- locations ----------------------------------------------------------
 
@@ -257,6 +258,8 @@ class FlightRecorder:
         except Exception:
             row = None
         size = len(row) if row is not None else 128
+        if event.session_id_hash:
+            self.last_session_hash = event.session_id_hash
         with self._lock:
             self._buf.append((event, size))
             self._approx_bytes += size
@@ -456,6 +459,25 @@ class FlightRecorder:
         )
         self.last_freeze = result
         return result
+
+    def current_session_hash(self) -> str | None:
+        """The most recently active session: in-memory first (inside Hermes), else the
+        newest persisted event that carries one (a fresh CLI process)."""
+        if self.last_session_hash:
+            return self.last_session_hash
+        if not self.persist:
+            return None
+        recent = load_recent_persisted_events(
+            retention_seconds=self.retention_seconds,
+            max_events=self.max_events,
+            max_bytes=self.max_bytes,
+            path=self._path,
+            directory=self._dir(),
+        )
+        for ev in reversed(recent):
+            if ev.session_id_hash:
+                return ev.session_id_hash
+        return None
 
     def stats(self) -> RecorderStats:
         with self._lock:

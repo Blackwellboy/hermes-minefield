@@ -485,7 +485,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     3. Update `issues/routing.py` if a new classification appears. `TOOL_BUG` → Hermes is already mapped. `CONFIGURATION_ERROR` stays ambiguous, so the user must select.
   - **Accept:** All rule tests pass, and no existing test changes its expected classification.
 
-- [ ] **T3.5 Scope `wtf` to the current session by default**
+- [x] **T3.5 Scope `wtf` to the current session by default**
   - **Why:** In multi-session or gateway setups, a window mixes unrelated sessions.
   - **Do:** The recorder tracks `last_session_hash` (updated in every hook that has a `session_id`). Store it in `extra` for persisted rows, so a fresh CLI process can take the session hash of the newest persisted event. `wtf` defaults to `--session current`, which resolves to that hash. `--session all` keeps today's behaviour. The rendered header shows `scope: current session (abc123…)` or `scope: all sessions`.
   - **Accept:** A test with two interleaved sessions, where the looping one is older and the newest is quiet, shows the quiet one by default and the loop with `--session all`.
