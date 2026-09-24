@@ -518,27 +518,27 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 
 ### Phase 4: Contribution workflow hardening
 
-- [ ] **T4.1 Link incidents to submitted issues**
+- [x] **T4.1 Link incidents to submitted issues**
   - **Why:** F11.
   - **Do:** After a successful **non-dry-run** `submit_issue`, parse `owner/repo#number` from the returned `html_url`. Call `update_incident_status(incident_id, "SUBMITTED", github={"repo": …, "number": …, "html_url": …})`. Add `STATUS_SUBMITTED = "SUBMITTED"` to `incident/types.py`. `issues --refresh` then works as designed.
   - **Accept:** A test with a monkeypatched `urllib.request.urlopen` returns a fake issue. The incident JSON then contains `github.number`, and `run_issues(refresh=True)` shows `[OPEN]`.
 
-- [ ] **T4.2 Submit exactly what was previewed**
+- [x] **T4.2 Submit exactly what was previewed**
   - **Why:** The draft is rebuilt between preview and submit. What's submitted should be byte-identical to what the human approved.
   - **Do:** `contribute --github` saves the draft and prints its `draft_id`, which is the file stem. Add a new flag, `contribute --submit-draft <draft_id> --i-approve-submit --submit`. It loads that exact saved draft, shows its SHA-256 (first 12 chars) in both the preview and the confirmation, re-checks `assert_repo_allowed`, and submits the saved `title`/`body` unchanged. The old combined flow stays working.
   - **Accept:** A test proves that the submitted body equals the saved draft body, and that a tampered draft file (hash mismatch against a stored `body_sha256`) is refused.
 
-- [ ] **T4.3 No silent fallback to the wrong incident**
+- [x] **T4.3 No silent fallback to the wrong incident**
   - **Why:** F12.
   - **Do:** If `--incident X` is given and not found, return `ok: False` with "Incident X not found. Recent: …" (list the 5 newest IDs). The fallback to the latest incident applies only when `--incident` is omitted, and then the output says `using latest incident <id>`.
   - **Accept:** A test covers both paths.
 
-- [ ] **T4.4 Remote duplicate search before submit (read-only)**
+- [x] **T4.4 Remote duplicate search before submit (read-only)**
   - **Why privacy-first:** Even sanitized title tokens can contain model names, runtime names, failure signatures, or private project terms. The plugin promises local, metadata-only diagnosis, with publication only as a deliberate human step.
   - **Do:** Remote search is **off by default** (`remote_dedupe: false`). It runs only when the user passes `--remote-dedupe` during `contribute --github`, or has set `remote_dedupe: true`. Before anything leaves the machine, print `Searching GitHub for these sanitized terms: <terms>`. Then call `GET /search/issues?q=repo:<repo>+is:issue+in:title+<top 5 tokens>` with a 10 s timeout and show up to 3 hits as "Possible upstream duplicates". Treat any failure as "(remote dedupe unavailable)", never as an error. Nothing except those printed terms is sent.
   - **Accept:** A test with a monkeypatched `urlopen` covers the hits, a timeout, the default-off case (no network call at all), and that the printed terms equal the terms sent.
 
-- [ ] **T4.5 Gateway safety for `--submit`**
+- [x] **T4.5 Gateway safety for `--submit`**
   - **Why:** In gateway mode (Telegram, Discord), anyone who can type in the chat can run `/minefield contribute --submit`, and the host's `GITHUB_TOKEN` would be used.
   - **Do:** Add the config `allow_submit_from_chat: false` (default). Slash-mode `--submit` (not dry-run) is refused unless it's enabled. The response says: "Real submission is CLI-only by default. Run: hermes minefield contribute --submit-draft <id> --i-approve-submit --submit". Dry-run stays allowed.
   - **Accept:** A test shows slash `--submit` is refused by default and allowed when configured. The CLI is unaffected.

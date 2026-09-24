@@ -60,6 +60,13 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Actually submit after approval (default remains dry-run)",
     )
+    p_con.add_argument("--submit-draft", default=None, help="submit a previously previewed draft by id")
+    p_con.add_argument(
+        "--remote-dedupe",
+        action="store_true",
+        default=None,
+        help="search the target repo for similar issues (prints the terms first)",
+    )
 
     p_iss = subs.add_parser("issues", help="List local incidents + linked GitHub status")
     p_iss.add_argument("--limit", type=int, default=20)

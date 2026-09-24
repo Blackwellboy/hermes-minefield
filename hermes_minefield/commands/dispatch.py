@@ -128,6 +128,9 @@ def run_command(args: Any, *, surface: str = "cli") -> dict[str, Any]:
             user_selected_repo=bool(g("target_repo")),
             approve=bool(g("i_approve_submit", False)),
             dry_run=not bool(g("submit", False)),
+            submit_draft=g("submit_draft"),
+            remote_dedupe=g("remote_dedupe"),
+            surface=surface,
         )
     if cmd == "issues":
         return _guard(run_issues, limit=int(g("limit", 20) or 20), refresh=bool(g("refresh", False)))

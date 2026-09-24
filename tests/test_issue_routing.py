@@ -115,7 +115,7 @@ def test_contribute_unknown_requires_selection(tmp_hermes_home):
     from hermes_minefield.incident.types import IncidentArtifact
 
     art = IncidentArtifact(
-        incident_id="INC-TEST-UNK",
+        incident_id="INC-20260101-ABCD",
         timestamp=time.time(),
         session_id_hash=None,
         model_fingerprint=None,
@@ -132,7 +132,7 @@ def test_contribute_unknown_requires_selection(tmp_hermes_home):
         recommended_action="ask",
     )
     save_incident(art)
-    out = run_contribute(incident_id="INC-TEST-UNK", github=True)
+    out = run_contribute(incident_id="INC-20260101-ABCD", github=True)
     assert out.get("user_selection_required") is True
     assert out.get("target_repo") is None
     assert "USER_SELECTION_REQUIRED=YES" in out["text"]
