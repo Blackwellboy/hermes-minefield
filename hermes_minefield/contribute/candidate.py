@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ..issues.sanitize import sanitize_packet
-from ..paths import candidates_dir
+from ..paths import atomic_write_text, candidates_dir
 
 LOCAL_OBSERVATION = "LOCAL_OBSERVATION"
 CANDIDATE = "CANDIDATE"
@@ -103,5 +103,5 @@ def build_candidate(
 
 def save_candidate(packet: CandidatePacket) -> Path:
     path = candidates_dir() / f"{packet.candidate_id}.json"
-    path.write_text(json.dumps(packet.to_dict(), indent=2, sort_keys=True), encoding="utf-8")
+    atomic_write_text(path, json.dumps(packet.to_dict(), indent=2, sort_keys=True))
     return path

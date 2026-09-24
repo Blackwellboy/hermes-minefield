@@ -351,7 +351,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 
 ### Phase 2: Robustness and correct Hermes plumbing
 
-- [ ] **T2.1 Resolve Hermes home the Hermes way**
+- [x] **T2.1 Resolve Hermes home the Hermes way**
   - **Why:** F18.
   - **Do:** In `paths.hermes_home()`, first try `from hermes_constants import get_hermes_home; return Path(get_hermes_home()).expanduser().resolve()`. On `ImportError`, fall back to `HERMES_HOME`/`HERMES_HOME_DIR`, then to `~/.hermes`. Tests: with `hermes_constants` importable (Hermes is installed in the dev env), `HERMES_HOME` set via monkeypatch is still honoured, because Hermes reads it. With `sys.modules["hermes_constants"] = None` (which simulates it being absent), the env fallback works.
   - **Accept:** Tests pass. The existing `tmp_hermes_home` fixture still isolates everything.
@@ -412,7 +412,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     5. Tests: two recorder instances with different `path`/segment dirs write interleaved events, and a third process-free reader sees all of them. Rotation deletes old segments. The legacy file is still read.
   - **Accept:** Tests pass. `tests/test_cross_process_wtf.py` still passes, possibly adapted to segments. Explain any adaptation.
 
-- [ ] **T2.6 Atomic, private file writes**
+- [x] **T2.6 Atomic, private file writes**
   - **Why:** F16.
   - **Do:** Add a helper `paths.atomic_write_text(path, text)`. It writes to a `NamedTemporaryFile` in the same dir, fsyncs, `os.chmod(tmp, 0o600)`, then `os.replace`. `paths.minefield_root()` and its subdirs are created with mode `0o700`. Use `os.chmod` after `mkdir`, and ignore errors on Windows. Use the helper in `cache.save_cache`, `incident.store.save_incident`/`update_incident_status`, `issues.draft.save_draft`, and `contribute.candidate.save_candidate`. Segment files from T2.5 are opened with `os.open(..., 0o600)`.
   - **Accept:** A test asserts the file modes are `0o600` (skip on Windows), and that no partial file is left behind if `json.dumps` raises.

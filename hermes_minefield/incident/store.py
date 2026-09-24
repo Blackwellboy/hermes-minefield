@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
-from ..paths import incidents_dir
+from ..paths import atomic_write_text, incidents_dir
 from .types import IncidentArtifact
 
 
 def save_incident(artifact: IncidentArtifact) -> Path:
     path = incidents_dir() / f"{artifact.incident_id}.json"
-    path.write_text(json.dumps(artifact.to_dict(), indent=2, sort_keys=True), encoding="utf-8")
+    atomic_write_text(path, json.dumps(artifact.to_dict(), indent=2, sort_keys=True))
     # index
     idx = incidents_dir() / "index.jsonl"
-    with idx.open("a", encoding="utf-8") as fh:
+    fd = os.open(idx, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+    with os.fdopen(fd, "a", encoding="utf-8") as fh:
         fh.write(
             json.dumps(
                 {
@@ -71,5 +73,5 @@ def update_incident_status(incident_id: str, status: str, **fields: Any) -> bool
     data["status"] = status
     data.update(fields)
     path = incidents_dir() / f"{incident_id}.json"
-    path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
+    atomic_write_text(path, json.dumps(data, indent=2, sort_keys=True))
     return True

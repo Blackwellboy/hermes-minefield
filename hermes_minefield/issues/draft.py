@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..paths import drafts_dir
+from ..paths import atomic_write_text, drafts_dir
 from .sanitize import sanitize_issue_body, sanitize_packet
 
 
@@ -111,5 +111,5 @@ def build_issue_draft(
 def save_draft(draft: IssueDraft) -> Path:
     name = f"draft-{int(time.time())}-{draft.incident_id or 'anon'}.json"
     path = drafts_dir() / name
-    path.write_text(json.dumps(asdict(draft), indent=2, sort_keys=True), encoding="utf-8")
+    atomic_write_text(path, json.dumps(asdict(draft), indent=2, sort_keys=True))
     return path

@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from .paths import cache_dir
+from .paths import atomic_write_text, cache_dir
 
 
 @dataclass
@@ -40,7 +40,7 @@ def load_cache() -> dict[str, Any]:
 
 def save_cache(data: dict[str, Any]) -> None:
     p = _path()
-    p.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
+    atomic_write_text(p, json.dumps(data, indent=2, sort_keys=True))
 
 
 def get_entry(fingerprint: str, *, ttl_days: int | None = None) -> CacheEntry | None:
