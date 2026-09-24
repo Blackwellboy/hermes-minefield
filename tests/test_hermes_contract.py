@@ -86,7 +86,9 @@ def test_provides_hooks_are_valid_hermes_hooks():
     manifest = yaml.safe_load((ROOT / "plugin.yaml").read_text())
     declared = set(manifest.get("provides_hooks") or [])
     assert declared, "plugin.yaml must declare provides_hooks"
-    assert declared <= set(VALID_HOOKS), sorted(declared - set(VALID_HOOKS))
+    optional = {_hook_name(k, v) for k, v in FIXTURE.items() if v.get("optional_hook")}
+    missing = declared - set(VALID_HOOKS)
+    assert missing <= optional, sorted(missing - optional)
 
 
 @pytest.mark.parametrize("key", sorted(FIXTURE))

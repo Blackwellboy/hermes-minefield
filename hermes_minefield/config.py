@@ -24,6 +24,15 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 PLUGIN_ID = "hermes-minefield"
+# The id Hermes actually loaded us under (ctx.plugin_id: derived from the install dir,
+# e.g. a catalog install); settings live under plugins.entries.<that id>.
+_active_plugin_id: str | None = None
+
+
+def set_plugin_id(plugin_id: str | None) -> None:
+    global _active_plugin_id
+    _active_plugin_id = plugin_id or None
+
 
 DEFAULT_LITE_MAX_REQUESTS = 5
 DEFAULT_RECORDER_RETENTION_SECONDS = 600  # ~10 minutes
@@ -100,7 +109,7 @@ def find_section(data: Mapping[str, Any]) -> Mapping[str, Any]:
     plugins = data.get("plugins")
     entries = plugins.get("entries") if isinstance(plugins, Mapping) else None
     if isinstance(entries, Mapping):
-        for key in (PLUGIN_ID, "minefield"):
+        for key in dict.fromkeys(k for k in (_active_plugin_id, PLUGIN_ID, "minefield") if k):
             entry = entries.get(key)
             if not isinstance(entry, Mapping):
                 continue

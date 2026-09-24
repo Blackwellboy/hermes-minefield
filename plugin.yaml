@@ -1,10 +1,22 @@
+manifest_version: 2
 name: hermes-minefield
-version: 0.1.0
+version: 0.2.0
 description: >-
-  Model Serving Minefield integration for Hermes: Lite check, full Doctor,
-  flight recorder, /minefield wtf incident analysis, and review-gated
-  contribution/issue workflows. Opt-in. Never auto-uploads.
+  Model Serving Minefield for Hermes: budgeted Lite check, guarded full Doctor,
+  metadata-only flight recorder, /minefield wtf incident analysis with honest
+  PASS / FAIL / UNKNOWN verdicts, and human-gated issue drafting. Opt-in.
+  Never auto-uploads.
 author: Blackwellboy
+license: MIT
+kind: standalone
+# Proven by the hermes-compat CI matrix (v2026.8.31 .. v2026.9.24); widen only with CI proof.
+requires_hermes: ">=0.21,<0.22"
+python_dependencies:
+  # Not on PyPI; pinned to the SHA CI tests against. Install by hand:
+  #   pip install "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@7b324f86d424c20bce177200851c968c1d70c536"
+  - "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@7b324f86d424c20bce177200851c968c1d70c536"
+provides_tools:
+  - minefield_recent_incident
 provides_hooks:
   - pre_tool_call
   - post_tool_call
@@ -17,3 +29,16 @@ provides_hooks:
   - on_session_end
   - on_session_finalize
   - agent_loop_stopped
+config_schema:
+  lite_max_requests: {type: int, default: 5, description: "Lite request budget (0-5)"}
+  recorder_retention_seconds: {type: int, default: 600, description: "How long recorder events are kept (60-86400)"}
+  recorder_max_events: {type: int, default: 5000, description: "Recorder event cap (100-100000)"}
+  recorder_max_bytes: {type: int, default: 8388608, description: "Recorder byte cap, memory and disk (64 KiB-256 MiB)"}
+  fingerprint_cache_ttl_days: {type: int, default: 30, description: "Lite results older than this are stale (UNKNOWN)"}
+  incident_retention_days: {type: int, default: 90, description: "Default age for 'hermes minefield prune'"}
+  loop_streak_threshold: {type: int, default: 5, description: "Consecutive identical calls (same args + result) that count as a loop"}
+  repo_allowlist: {type: list, description: "owner/name repos that issue drafts may target without --repo"}
+  remote_dedupe: {type: bool, default: false, description: "Search GitHub for duplicates while drafting (sends sanitized title terms)"}
+  allow_submit_from_chat: {type: bool, default: false, description: "Allow real issue submission from a chat slash command"}
+  expose_agent_tool: {type: bool, default: false, description: "Offer the read-only minefield_recent_incident tool to the model"}
+  auto_lite: {type: str, default: "false", description: "true = background Lite once per process on multi-slot endpoints"}

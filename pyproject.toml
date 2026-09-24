@@ -4,14 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-minefield"
-version = "0.1.0"
+version = "0.2.0"
 description = "Standalone Hermes plugin for Model Serving Minefield diagnostics and incident analysis"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Blackwellboy" }]
 dependencies = [
-  "model-serving-minefield>=0.1.0",
+  # Not on PyPI; pinned to the SHA CI tests against (see plugin.yaml).
+  "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@7b324f86d424c20bce177200851c968c1d70c536",
 ]
 
 [project.optional-dependencies]

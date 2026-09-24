@@ -256,7 +256,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
        - replays the contract fixtures through Hermes's own `invoke_hook` with the plugin loaded.
     4. When bumping the known-good pin or widening the range, update this list and the §2 tables in the same PR.
   - **Accept:** All three blocking matrix entries are green. Deliberately renaming a key in the fixture makes the job fail.
-  - *As implemented:* the matrix found two real differences in 0.21.0: it doesn't send `post_api_request.first_chunk_at`, and it never fires `agent_loop_stopped`. It also has no `hermes plugins validate` command. The fixture marks those as `optional_reads`/`optional_hook`. The plugin must record UNKNOWN when they're absent, and every other key is enforced on every version. The validator step runs only where the command exists.
+  - *As implemented:* the matrix found three real differences in 0.21.0: `agent_loop_stopped` isn't a valid hook there (the plugin registers it only where `VALID_HOOKS` has it), and it doesn't send `post_api_request.first_chunk_at`. It also has no `hermes plugins validate` command. The fixture marks those as `optional_reads`/`optional_hook`. The plugin must record UNKNOWN when they're absent, and every other key is enforced on every version. The validator step runs only where the command exists.
 
 ---
 
@@ -547,7 +547,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 
 ### Phase 5: Hermes-native integration
 
-- [ ] **T5.1 Manifest v2**
+- [x] **T5.1 Manifest v2**
   - **Do:** Rewrite `plugin.yaml`:
     ```yaml
     manifest_version: 2
@@ -580,24 +580,25 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     **First** read `hermes_cli/plugins_manifest.py::validate_config_schema` at the pinned SHA to confirm the exact `config_schema` entry shape (keys like `type`/`default`/`description`), and adjust to match. If `python_dependencies` doesn't accept a PEP 508 URL, use `model-serving-minefield>=0.1.0` and document the git install in the README.
   - **Accept:** `hermes plugins validate .` is fully green, including `config schema`, `requires_hermes`, and `python dependencies`.
 
-- [ ] **T5.2 Use `ctx.get_config` when available**
+- [x] **T5.2 Use `ctx.get_config` when available**
   - **Do:** In `register(ctx)`, build the config dict from `ctx.get_config(key, default)` for each schema key when `hasattr(ctx, "get_config")`. Otherwise use T2.2's mapping parser. Store the resolved config in a module-level holder that the commands use, instead of re-reading YAML on every command. Commands still work standalone in tests.
   - **Accept:** A test with a fake ctx exposing `get_config` shows the settings flowing through to `run_check`.
 
-- [ ] **T5.3 Implement or remove `auto_lite`**
+- [x] **T5.3 Implement or remove `auto_lite`**
   - **Why:** F10. Recommended: implement a **safe** version.
   - **Do:** On the first `on_session_start` per process, if `auto_lite == "true"` and the cache entry for the current target is missing or stale, start a **daemon thread**. It runs `probe_concurrency` first and **skips** unless `known_concurrency >= 2`, then runs `run_check()`. It never blocks the hook and never prints into the chat. The result lands in the cache, and `status` shows it. Drop the `"prompt"` value: map it to `"false"` with a one-time deprecation log.
   - **Accept:** Tests: the hook returns in < 5 ms (thread is mocked). The check is skipped when single-slot or unknown. It runs at most once per process.
 
-- [ ] **T5.4 Optional read-only agent tool (off by default)**
+- [x] **T5.4 Optional read-only agent tool (off by default)**
   - **Why:** It lets users say "why did you just do that?" in natural language, and the agent can pull the incident report itself.
   - **Do:** Add the config `expose_agent_tool: false`. When true, `ctx.register_tool(...)` registers a tool `minefield_recent_incident`. Check the exact `register_tool` signature at the pinned SHA first. It takes `{window: "5m"}`, runs `run_wtf(save=False)`, and returns the **structured** artifact: counts, classification, recommendation. It is **read-only**: it can't call contribute, can't save, and can't touch the network. Add it to `provides_tools` only when registered. If the validator requires static declaration, always register it but make it return "disabled in config" when off, and explain which choice you made.
   - **Accept:** The validator passes. A test confirms the tool output contains no file paths, hashes of args, or raw events, just the summary.
 
-- [ ] **T5.5 Async slash handlers for long commands**
+- [x] **T5.5 Async slash handlers for long commands** — *closed as won't-do after checking Hermes (see below)*
   - **Why:** `/minefield doctor --yes` can take minutes and blocks the chat UI thread.
   - **Do:** Register the slash handler as `async def`, and run the sync dispatch in `asyncio.to_thread(...)`. Confirm at the pinned SHA that both CLI and gateway accept async handlers (§2.2 says "sync or async", but verify the CLI path by reading the code that calls plugin command handlers).
   - **Accept:** A test with `asyncio.run(handler("status"))` returns text. The e2e test still passes.
+  - *Resolution:* not implemented, on evidence. The gateway already runs **sync** plugin command handlers on its thread pool, off the event loop (`gateway/run_inbound.py`). The CLI resolves async handlers through `resolve_plugin_command_result`, which either blocks exactly like a sync call, or, when a loop is running, **cuts the handler off after 30 s**. That would truncate a Doctor run. Sync is the better choice on both surfaces.
 
 ---
 

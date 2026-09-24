@@ -16,7 +16,9 @@ def test_plugin_loads_enabled_without_error(hermes_plugins):
 
 def test_declared_hooks_are_registered(hermes_plugins):
     declared = set(yaml.safe_load((ROOT / "plugin.yaml").read_text())["provides_hooks"])
-    for hook in declared:
+    from hermes_cli.plugins import VALID_HOOKS
+
+    for hook in declared & set(VALID_HOOKS):  # optional newer hooks are skipped on older Hermes
         assert hermes_plugins.has_hook(hook), f"{hook} declared but not registered"
 
 
@@ -51,3 +53,12 @@ def test_contract_payloads_replayed_through_hermes(hermes_plugins, hermes_home):
     raw = "".join(p.read_text() for p in (hermes_home / "minefield" / "recorder").glob("*.jsonl"))
     assert "SENTINEL" not in raw, "persisted recorder leaked private fixture content"
     assert json.dumps([e.to_dict() for e in events])
+
+
+def test_agent_tool_registered_but_hidden_by_default(hermes_plugins):
+    from tools.registry import registry
+
+    manager = hermes_plugins.get_plugin_manager()
+    assert "minefield_recent_incident" in manager._plugin_tool_names
+    entry = registry.get_entry("minefield_recent_incident", scope=manager.scope_key)
+    assert entry is not None and entry.check_fn() is False  # expose_agent_tool defaults to false
