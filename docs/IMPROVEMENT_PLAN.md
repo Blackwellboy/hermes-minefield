@@ -418,7 +418,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Do:** Add a helper `paths.atomic_write_text(path, text)`. It writes to a `NamedTemporaryFile` in the same dir, fsyncs, `os.chmod(tmp, 0o600)`, then `os.replace`. `paths.minefield_root()` and its subdirs are created with mode `0o700`. Use `os.chmod` after `mkdir`, and ignore errors on Windows. Use the helper in `cache.save_cache`, `incident.store.save_incident`/`update_incident_status`, `issues.draft.save_draft`, and `contribute.candidate.save_candidate`. Segment files from T2.5 are opened with `os.open(..., 0o600)`.
   - **Accept:** A test asserts the file modes are `0o600` (skip on Windows), and that no partial file is left behind if `json.dumps` raises.
 
-- [ ] **T2.7 Bounded incident storage**
+- [x] **T2.7 Bounded incident storage**
   - **Why:** F14.
   - **Do:** Add the config `incident_retention_days` (default 90, range 1–3650) and a new command `hermes minefield prune [--older-than 30d] [--dry-run]`, also available as slash `/minefield prune`. It deletes old `INC-*.json`, `CAND-*.json`, and `draft-*.json` files. `save_incident` compacts `index.jsonl` to the last 1000 lines whenever it has more than 2000. Incidents linked to an open GitHub issue (T4.1) are never pruned.
   - **Accept:** Tests pass. `--dry-run` deletes nothing.

@@ -67,6 +67,10 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
 
     subs.add_parser("clear-cache", help="Clear fingerprint Lite cache")
 
+    p_prune = subs.add_parser("prune", help="Delete old local incidents/candidates/drafts")
+    p_prune.add_argument("--older-than", default=None, help="e.g. 30d (default: incident_retention_days)")
+    p_prune.add_argument("--dry-run", action="store_true")
+
     for p in subs.choices.values():
         p.add_argument("--json", action="store_true", help="machine-readable output (sanitized)")
 

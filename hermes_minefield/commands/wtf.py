@@ -12,7 +12,7 @@ from ..incident.store import save_incident
 from ..privacy import stable_hash
 from ..recorder.store import get_recorder
 
-_DURATION_RE = re.compile(r"^(\d+)\s*([smh])?$", re.I)
+_DURATION_RE = re.compile(r"^(\d+)\s*([smhd])?$", re.I)
 
 
 def parse_window(raw: str | None, default_seconds: float = 300.0) -> float:
@@ -31,6 +31,8 @@ def parse_window(raw: str | None, default_seconds: float = 300.0) -> float:
         return float(n * 60)
     if unit == "h":
         return float(n * 3600)
+    if unit == "d":
+        return float(n * 86400)
     return float(n)
 
 

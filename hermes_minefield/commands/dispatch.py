@@ -18,6 +18,7 @@ from .check import run_check
 from .contribute import run_contribute
 from .doctor import run_doctor
 from .issues import run_issues
+from .prune import run_prune
 from .status import run_status
 from .wtf import run_wtf
 
@@ -32,6 +33,7 @@ USAGE = (
     "  /minefield incident [2m]\n"
     "  /minefield contribute [--incident ID] [--github --repo owner/name]\n"
     "  /minefield issues [--refresh]\n"
+    "  /minefield prune [--older-than 30d] [--dry-run]\n"
     "  /minefield clear-cache\n"
 )
 
@@ -131,6 +133,8 @@ def run_command(args: Any, *, surface: str = "cli") -> dict[str, Any]:
         return _guard(run_issues, limit=int(g("limit", 20) or 20), refresh=bool(g("refresh", False)))
     if cmd == "clear-cache":
         return _guard(_clear_cache)
+    if cmd == "prune":
+        return _guard(run_prune, older_than=g("older_than"), dry_run=bool(g("dry_run", False)))
     return {"ok": False, "text": f"unknown minefield command: {cmd}"}
 
 
