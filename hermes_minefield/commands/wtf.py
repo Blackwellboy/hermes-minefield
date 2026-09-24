@@ -7,6 +7,7 @@ from typing import Any
 
 from .. import verdict as V
 from ..incident.analyze import analyze_events, render_incident
+from ..incident.store import save_incident
 from ..privacy import stable_hash
 from ..recorder.store import get_recorder
 
@@ -49,12 +50,20 @@ def incident_verdict(classification: str, event_count: int, *, truncated: bool =
     return V.FAIL, f"anomaly: {classification}{note}"
 
 
+def should_skip_saving(classification: str, severity: str) -> bool:
+    """Quiet or normal windows are not incidents; don't clutter `issues` with them."""
+    return classification in {"UNKNOWN", "EXPECTED_BEHAVIOUR"} and severity == "LOW"
+
+
 def run_wtf(
     *,
     window: str | None = None,
     session: str | None = None,
+    save: bool | None = None,
     persist: bool = True,
 ) -> dict[str, Any]:
+    """Freeze + classify. ``save``: True/False forces; None saves only anomalies.
+    ``persist=False`` (tests/legacy) never saves."""
     since = parse_window(window, default_seconds=300.0)
     sid_hash = None
     if session and session not in {"current", "all"}:
@@ -68,17 +77,26 @@ def run_wtf(
         events,
         session_id_hash=sid_hash,
         since_seconds=since,
-        persist=persist,
+        persist=False,
     )
     truncated = len(events) >= rec.max_events
     verdict, reason = incident_verdict(artifact.classification, len(events), truncated=truncated)
+    if not persist:
+        should_save = False
+    elif save is None:
+        should_save = not should_skip_saving(artifact.classification, artifact.severity)
+    else:
+        should_save = bool(save)
+    if should_save:
+        save_incident(artifact)
     # Concise UX; sources available in structured result for debug/tests.
-    body = render_incident(artifact)
+    body = render_incident(artifact, saved=should_save)
     return {
         "ok": True,
         "verdict": verdict,
         "text": f"Minefield:\n{intro}\n\n{body}\n\n{V.line(verdict, reason)}",
-        "incident_id": artifact.incident_id,
+        "incident_id": artifact.incident_id if should_save else None,
+        "saved": should_save,
         "classification": artifact.classification,
         "severity": artifact.severity,
         "artifact": artifact.to_dict(),

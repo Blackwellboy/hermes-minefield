@@ -61,7 +61,7 @@ def run_contribute(
 
     hits = search_local(
         str(art.get("observed_symptom") or packet.title),
-        known=list_incidents(limit=50),
+        known=[r for r in list_incidents(limit=50) if r.get("incident_id") != art.get("incident_id")],
     )
     if hits:
         lines.append("")

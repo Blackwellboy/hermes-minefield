@@ -32,13 +32,18 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
     p_doc.add_argument("--yes", "-y", action="store_true")
     p_doc.add_argument("--max-requests", type=int, default=None)
 
-    p_wtf = subs.add_parser("wtf", help="Freeze flight recorder and explain weirdness")
-    p_wtf.add_argument("window", nargs="?", default=None, help="e.g. 2m, 5m, 120s")
-    p_wtf.add_argument("--session", default=None)
-
-    p_inc = subs.add_parser("incident", help="Professional alias for wtf")
-    p_inc.add_argument("window", nargs="?", default=None)
-    p_inc.add_argument("--session", default=None)
+    for name, help_text in (
+        ("wtf", "Freeze flight recorder and explain weirdness"),
+        ("incident", "Professional alias for wtf"),
+    ):
+        p = subs.add_parser(name, help=help_text)
+        p.add_argument("window", nargs="?", default=None, help="e.g. 2m, 5m, 120s (default 5m)")
+        p.add_argument("--session", default=None, help="current | all | <session id>")
+        save = p.add_mutually_exclusive_group()
+        save.add_argument(
+            "--save", dest="save", action="store_true", default=None, help="always save the incident"
+        )
+        save.add_argument("--no-save", dest="save", action="store_false", help="never save the incident")
 
     p_con = subs.add_parser("contribute", help="Sanitized candidate / issue draft")
     p_con.add_argument("--incident")

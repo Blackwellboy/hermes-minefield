@@ -89,7 +89,7 @@ def analyze_events(
     return artifact
 
 
-def render_incident(artifact: IncidentArtifact) -> str:
+def render_incident(artifact: IncidentArtifact, *, saved: bool = True) -> str:
     exec_total = artifact.actual_execution_counts.get("total_executed", 0)
     prep_total = artifact.actual_execution_counts.get("total_prepared", 0)
     equiv = artifact.repeated_call_counts.get("dominant_equivalent", 0)
@@ -105,7 +105,7 @@ def render_incident(artifact: IncidentArtifact) -> str:
     lines = [
         "MINEFIELD INCIDENT",
         "",
-        f"ID: {artifact.incident_id}",
+        f"ID: {artifact.incident_id if saved else '(not saved)'}",
         "Observed:",
         f"  {artifact.observed_symptom}",
         "",
@@ -132,7 +132,12 @@ def render_incident(artifact: IncidentArtifact) -> str:
         "Recommendation:",
         f"  {artifact.recommended_action}",
         "",
-        "Create local bug candidate?  (use: /minefield contribute)",
-        "Draft GitHub issue?          (use: /minefield contribute --github)",
     ]
+    if saved:
+        lines += [
+            "Create local bug candidate?  (use: /minefield contribute)",
+            "Draft GitHub issue?          (use: /minefield contribute --github)",
+        ]
+    else:
+        lines.append("(not saved — quiet or normal window; use --save to keep it)")
     return "\n".join(lines)

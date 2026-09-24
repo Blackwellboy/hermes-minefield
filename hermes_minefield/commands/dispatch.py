@@ -115,7 +115,7 @@ def run_command(args: Any, *, surface: str = "cli") -> dict[str, Any]:
             max_requests=g("max_requests"),
         )
     if cmd in {"wtf", "incident"}:
-        return _guard(run_wtf, window=g("window"), session=g("session"))
+        return _guard(run_wtf, window=g("window"), session=g("session"), save=g("save"))
     if cmd == "contribute":
         return _guard(
             run_contribute,

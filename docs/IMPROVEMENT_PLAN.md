@@ -322,7 +322,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     4. Tests: slash `check` with no config and no base_url returns a string containing "base_url", with no raise. Slash `check --max-requests abc` returns the integer message. CLI returns 1 for both.
   - **Accept:** Tests pass. `grep -n "raise" hermes_minefield/commands/*.py` shows only deliberate raises inside helpers.
 
-- [ ] **T1.6 `wtf` doesn't save noise; contribute doesn't match itself**
+- [x] **T1.6 `wtf` doesn't save noise; contribute doesn't match itself**
   - **Why:** F12, F14.
   - **Do:**
     1. In `commands/wtf.py`, add a `save: Optional[bool] = None` parameter. The default rule is: persist unless `classification in {"UNKNOWN", "EXPECTED_BEHAVIOUR"}` and `severity == "LOW"`. Add CLI flags `--save`/`--no-save` and the slash equivalents. When not saved, the rendered text ends with "(not saved — quiet window; use --save to keep)" and the `contribute` hints are left out. Note: `analyze_events(persist=...)` already exists. Compute first, then decide, then call `save_incident`.
