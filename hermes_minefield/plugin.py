@@ -71,5 +71,6 @@ def register(ctx: Any) -> None:
     ctx.register_hook("on_session_start", _safe(rec_hooks.on_session_start))
     ctx.register_hook("on_session_end", _safe(rec_hooks.on_session_end))
     ctx.register_hook("on_session_finalize", _safe(rec_hooks.on_session_finalize))
+    ctx.register_hook("agent_loop_stopped", _safe(rec_hooks.on_agent_loop_stopped))
 
     logger.info("hermes-minefield plugin registered (auto_lite=%s)", cfg.auto_lite)

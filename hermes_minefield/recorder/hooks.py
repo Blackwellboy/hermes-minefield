@@ -20,6 +20,7 @@ from .events import (
     API_ERROR,
     API_REQUEST,
     API_RESPONSE,
+    ORCH_CANCEL,
     SESSION_END,
     SESSION_START,
     TOOL_COMPLETED,
@@ -28,6 +29,7 @@ from .events import (
     TOOL_PREPARED,
     TOOL_REQUESTED,
     TURN_END,
+    TURN_FINISHED,
     TURN_START,
     RecorderEvent,
 )
@@ -44,6 +46,17 @@ def _session_hash(kw: dict) -> str | None:
 def _req_hash(kw: dict) -> str | None:
     rid = kw.get("api_request_id") or kw.get("request_id")
     return stable_hash(str(rid), n=12) if rid else None
+
+
+def _call_extra(kw: dict) -> dict[str, Any]:
+    cid = kw.get("tool_call_id")
+    return {"tool_call_id_hash": stable_hash(str(cid), n=12)} if cid else {}
+
+
+try:  # Hermes >= 0.21.3; older versions can't tell us about guardrail refusals.
+    from agent.tool_result_classification import is_guardrail_refusal as _is_guardrail_refusal
+except Exception:  # pragma: no cover - depends on installed Hermes
+    _is_guardrail_refusal = None
 
 
 def _tool_name(tool_name: Any, kw: dict) -> str:
@@ -101,24 +114,22 @@ def _payload_len(value: Any) -> int | None:
 
 
 def on_pre_tool_call(tool_name: str = "", args: Any = None, **kwargs) -> None:
-    """Tool about to execute. Must stay trivial: Hermes fails closed on errors here."""
+    """Hermes is dispatching a tool call. Must stay trivial: Hermes fails closed on errors here."""
     kw = kwargs
     rec = get_recorder()
     sid = _session_hash(kw)
     name = _tool_name(tool_name, kw)
     fp = arg_fingerprint(_tool_args(args, kw))
-    req = _req_hash(kw)
-    for etype in (TOOL_PREPARED, TOOL_REQUESTED):
-        rec.record(
-            RecorderEvent(
-                type=etype,
-                session_id_hash=sid,
-                request_id_hash=req,
-                tool_name=name,
-                tool_arg_fingerprint=fp,
-                extra={"phase": "pre_tool_call"},
-            )
+    rec.record(
+        RecorderEvent(
+            type=TOOL_REQUESTED,
+            session_id_hash=sid,
+            request_id_hash=_req_hash(kw),
+            tool_name=name,
+            tool_arg_fingerprint=fp,
+            extra=_call_extra(kw),
         )
+    )
 
 
 def _result_fingerprint(result: Any) -> str | None:
@@ -150,6 +161,12 @@ def on_post_tool_call(tool_name: str = "", args: Any = None, result: Any = None,
     result_fp = _result_fingerprint(result)
     wall_ms = _as_float(kw.get("duration_ms"))
     req = _req_hash(kw)
+    extra = _call_extra(kw)
+    if _is_guardrail_refusal is not None:
+        try:
+            extra["guardrail_refusal"] = bool(_is_guardrail_refusal(result))
+        except Exception:
+            pass
 
     rec.record(
         RecorderEvent(
@@ -162,6 +179,7 @@ def on_post_tool_call(tool_name: str = "", args: Any = None, result: Any = None,
             success=success,
             result_bytes=result_bytes,
             wall_ms=wall_ms,
+            extra=extra,
         )
     )
     rec.record(
@@ -175,6 +193,7 @@ def on_post_tool_call(tool_name: str = "", args: Any = None, result: Any = None,
             success=success,
             result_bytes=result_bytes,
             error_class=error_class,
+            extra=_call_extra(kw),
         )
     )
 
@@ -229,6 +248,24 @@ def on_pre_api_request(**kwargs) -> None:
     )
 
 
+def _response_tool_calls(response: Any) -> list[tuple[str, str | None]]:
+    """(tool name, call-id hash) for each tool call the model emitted. Names only —
+    never arguments."""
+    try:
+        calls = response["assistant_message"]["tool_calls"]
+    except (TypeError, KeyError):
+        return []
+    out: list[tuple[str, str | None]] = []
+    for tc in calls if isinstance(calls, list) else []:
+        if not isinstance(tc, dict):
+            continue
+        fn = tc.get("function")
+        name = fn.get("name") if isinstance(fn, dict) else tc.get("name")
+        cid = tc.get("id")
+        out.append((str(name or "unknown")[:80], stable_hash(str(cid), n=12) if cid else None))
+    return out[:256]
+
+
 def on_post_api_request(**kwargs) -> None:
     kw = kwargs
     duration_s = _as_float(kw.get("api_duration"))
@@ -253,7 +290,19 @@ def on_post_api_request(**kwargs) -> None:
     if n_calls is not None:
         extra["tool_calls_requested"] = n_calls
 
-    get_recorder().record(
+    rec = get_recorder()
+    sid, req = _session_hash(kw), _req_hash(kw)
+    for call in _response_tool_calls(kw.get("response")):
+        rec.record(
+            RecorderEvent(
+                type=TOOL_PREPARED,
+                session_id_hash=sid,
+                request_id_hash=req,
+                tool_name=call[0],
+                extra={"phase": "post_api_request", **({"tool_call_id_hash": call[1]} if call[1] else {})},
+            )
+        )
+    rec.record(
         RecorderEvent(
             type=API_RESPONSE,
             session_id_hash=_session_hash(kw),
@@ -309,7 +358,7 @@ def on_session_start(**kwargs) -> None:
 
 
 def on_session_end(**kwargs) -> None:
-    """Fires at the end of every turn (run_conversation), not once per session."""
+    """Hermes fires this at the end of *every turn* (run_conversation), not per session."""
     kw = kwargs
     extra: dict[str, Any] = {}
     for key in ("completed", "interrupted", "failed"):
@@ -317,7 +366,7 @@ def on_session_end(**kwargs) -> None:
         if v is not None:
             extra[key] = v
     rec = get_recorder()
-    rec.record(RecorderEvent(type=SESSION_END, session_id_hash=_session_hash(kw), extra=extra))
+    rec.record(RecorderEvent(type=TURN_FINISHED, session_id_hash=_session_hash(kw), extra=extra))
     # Ask the background flusher to write now, so a later `hermes minefield wtf`
     # in a fresh process sees this turn. No file I/O on the hook thread.
     rec.request_flush()
@@ -325,4 +374,17 @@ def on_session_end(**kwargs) -> None:
 
 def on_session_finalize(**kwargs) -> None:
     """Real session teardown (/new, quit)."""
-    on_session_end(**kwargs)
+    rec = get_recorder()
+    rec.record(RecorderEvent(type=SESSION_END, session_id_hash=_session_hash(kwargs)))
+    rec.request_flush()
+
+
+def on_agent_loop_stopped(**kwargs) -> None:
+    """A turn was interrupted mid-run (gateway /stop, /new). Reason kept only if enum-like."""
+    reason = _enum_str(kwargs.get("reason"))
+    get_recorder().record(
+        RecorderEvent(
+            type=ORCH_CANCEL,
+            extra={"interrupted": True, **({"reason": reason} if reason else {})},
+        )
+    )

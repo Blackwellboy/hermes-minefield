@@ -1,0 +1,22 @@
+{
+  "about": "a 401 and a loop: the auth problem is reported",
+  "expected": {
+    "classification": "CONFIGURATION_ERROR",
+    "rule": "auth_failure"
+  },
+  "events": [
+    {
+      "type": "api.error",
+      "http_status": 403
+    },
+    {
+      "repeat": 8,
+      "type": "tool.executed",
+      "tool_name": "read_file",
+      "tool_arg_fingerprint": "a",
+      "result_fingerprint": "r",
+      "session_id_hash": "s",
+      "success": true
+    }
+  ]
+}

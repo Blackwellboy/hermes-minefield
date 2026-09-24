@@ -7,6 +7,7 @@ from collections.abc import Sequence
 
 from ..recorder.events import RecorderEvent
 from .classify import ClassificationResult, classify, compute_signals
+from .signals import percentile
 from .store import save_incident
 from .trap_match import match_traps
 from .types import IncidentArtifact
@@ -20,9 +21,10 @@ def analyze_events(
     runtime_fingerprint: str | None = None,
     since_seconds: float | None = None,
     persist: bool = True,
+    loop_streak_threshold: int | None = None,
 ) -> IncidentArtifact:
     signals = compute_signals(events)
-    result: ClassificationResult = classify(signals)
+    result: ClassificationResult = classify(signals, loop_streak_threshold=loop_streak_threshold)
     tool = signals.dominant_tool or "tool"
 
     trap_matches = match_traps(
@@ -54,7 +56,11 @@ def analyze_events(
             "requested": signals.requested_by_tool,
             "executed": signals.executed_by_tool,
             "total_prepared": signals.total_prepared,
+            "total_requested": signals.total_requested,
             "total_executed": signals.total_executed,
+            "in_flight": signals.in_flight,
+            "hung": signals.hung_by_tool,
+            "undispatched": signals.undispatched,
             "failed": signals.failed_by_tool,
             "total_failed": signals.total_failed,
             "dominant_tool": tool,
@@ -62,8 +68,16 @@ def analyze_events(
         repeated_call_counts={
             "equivalent_executed": signals.equivalent_executed,
             "dominant_equivalent": signals.equivalent_executed.get(tool, 0),
+            "longest_no_progress_streak": signals.longest_streak,
+            "streak_tool": signals.streak_tool,
+            "guard_blocks": signals.guard_blocks,
         },
-        timings={"window_seconds": signals.window_seconds},
+        timings={
+            "window_seconds": signals.window_seconds,
+            "api_responses": signals.api_responses,
+            "api_p95_ms": percentile(signals.api_latency_ms, 0.95),
+            "ttft_p95_ms": percentile(signals.api_ttft_ms, 0.95),
+        },
         errors=[],
         classification=result.classification,
         severity=result.severity,
@@ -82,7 +96,9 @@ def analyze_events(
         notes=[
             "NOT_EVERY_BUG_IS_A_MINEFIELD_TRAP",
             f"api_errors={signals.total_api_errors}",
-        ],
+            f"rule={result.rule}",
+        ]
+        + ([f"interrupted_turns={signals.interrupted_turns}"] if signals.interrupted_turns else []),
     )
     if persist:
         save_incident(artifact)
@@ -91,12 +107,10 @@ def analyze_events(
 
 def render_incident(artifact: IncidentArtifact, *, saved: bool = True) -> str:
     exec_total = artifact.actual_execution_counts.get("total_executed", 0)
-    prep_total = artifact.actual_execution_counts.get("total_prepared", 0)
     equiv = artifact.repeated_call_counts.get("dominant_equivalent", 0)
     dominant_tool = artifact.actual_execution_counts.get("dominant_tool") or ""
-    # NO_PROGRESS_STREAK approximates dominant equivalent repeats for tool-loop
-    # incidents (recorder does not yet emit Hermes guardrail warn/block counts).
-    no_progress_streak = equiv
+    streak = artifact.repeated_call_counts.get("longest_no_progress_streak", equiv)
+    blocks = artifact.repeated_call_counts.get("guard_blocks")
     trap_line = "NO"
     if artifact.known_trap_matches:
         m = artifact.known_trap_matches[0]
@@ -113,12 +127,9 @@ def render_incident(artifact: IncidentArtifact, *, saved: bool = True) -> str:
         f"REPEATED_EQUIVALENT_CALLS={equiv}",
         f"DOMINANT_TOOL={dominant_tool or 'unknown'}",
         f"TOOL_FAILURES={artifact.actual_execution_counts.get('total_failed', 0)}",
-        f"NO_PROGRESS_STREAK={no_progress_streak}",
+        f"NO_PROGRESS_STREAK={streak}",
         "GUARD_WARNINGS=unknown",
-        "GUARD_BLOCKS=unknown",
-        f"Actual executions: {exec_total}",
-        f"Preparations:      {prep_total}",
-        f"Repeated equivalent calls: {equiv}",
+        f"GUARD_BLOCKS={'unknown' if blocks is None else blocks}",
         "",
         "Likely cause:",
         f"  {artifact.likely_root_cause}",

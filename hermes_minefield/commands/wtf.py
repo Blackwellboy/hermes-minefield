@@ -6,6 +6,7 @@ import re
 from typing import Any
 
 from .. import verdict as V
+from ..config import load_plugin_config
 from ..incident.analyze import analyze_events, render_incident
 from ..incident.store import save_incident
 from ..privacy import stable_hash
@@ -78,6 +79,7 @@ def run_wtf(
         session_id_hash=sid_hash,
         since_seconds=since,
         persist=False,
+        loop_streak_threshold=load_plugin_config().loop_streak_threshold,
     )
     truncated = len(events) >= rec.max_events
     verdict, reason = incident_verdict(artifact.classification, len(events), truncated=truncated)

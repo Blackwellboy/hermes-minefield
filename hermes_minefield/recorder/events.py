@@ -16,6 +16,7 @@ TOOL_FAILED = "tool.failed"
 
 TURN_START = "turn.start"
 TURN_END = "turn.end"
+TURN_FINISHED = "turn.finished"  # on_session_end: fires after every turn
 API_REQUEST = "api.request"
 API_RESPONSE = "api.response"
 API_ERROR = "api.error"
@@ -36,6 +37,7 @@ _KNOWN_TYPES = frozenset(
         TOOL_FAILED,
         TURN_START,
         TURN_END,
+        TURN_FINISHED,
         API_REQUEST,
         API_RESPONSE,
         API_ERROR,

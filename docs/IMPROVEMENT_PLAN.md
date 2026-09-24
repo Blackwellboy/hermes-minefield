@@ -428,7 +428,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Do:** Change the root `__init__.py` to `from .hermes_minefield.plugin import register`, and delete the `sys.path` code. All intra-package imports in `hermes_minefield/` are already relative. Check with `grep -rn "^from hermes_minefield\|^import hermes_minefield" hermes_minefield`, which must return nothing. Tests keep working through `pythonpath = ["."]`.
   - **Accept:** `hermes plugins validate .` passes. After symlinking into `$HERMES_HOME/plugins/`, `hermes minefield status` works (use the e2e script from T3.8). If Hermes turns out not to load the root as a package, **stop**. Record it in the PR and in §6.
 
-- [ ] **T2.9 Flush on real session teardown only**
+- [x] **T2.9 Flush on real session teardown only**
   - **Why:** `on_session_end` fires on every turn (§2.1). Recording `session.end` every turn is misleading.
   - **Do:** Map `on_session_end` to a new event type `TURN_FINISHED = "turn.finished"` with `completed`/`interrupted` in `extra`. Map `on_session_finalize` to `SESSION_END` and flush. Register `agent_loop_stopped` → `ORCH_CANCEL`, with `reason` in `extra` only if it's a short enum-like string (≤ 40 chars, `[a-z_]+`). Add `agent_loop_stopped` to `provides_hooks`. Keep `from_dict` accepting `session.*` and `turn.*`.
   - **Accept:** Contract tests are updated and pass. The validator passes.
@@ -437,7 +437,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 
 ### Phase 3: Diagnostics quality (make `wtf` genuinely useful)
 
-- [ ] **T3.1 Honest tool lifecycle: prepared → requested → executed**
+- [x] **T3.1 Honest tool lifecycle: prepared → requested → executed**
   - **Why:** F24.
   - **Do:**
     1. `on_pre_tool_call` emits **only** `TOOL_REQUESTED`, with `request_id_hash` and, when present, `tool_call_id_hash` in `extra`.
@@ -448,7 +448,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     6. Create new fixtures `fixtures/wtf_v2_*.json` using the new semantics. **Keep** the old fixtures and their tests as `legacy` to prove that events persisted by older versions still classify.
   - **Accept:** On a real Hermes session (T3.8 e2e), a normal turn with tool calls classifies as `EXPECTED_BEHAVIOUR`, not `UNKNOWN`.
 
-- [ ] **T3.2 Streak-based loop detection that mirrors Hermes guardrails**
+- [x] **T3.2 Streak-based loop detection that mirrors Hermes guardrails**
   - **Why:** F7, and it makes the `NO_PROGRESS_STREAK` field real instead of approximated.
   - **Do:**
     1. Move `compute_signals` into a new module, `incident/signals.py`. Leave a re-export in `classify.py`.
@@ -458,12 +458,12 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     5. `render_incident` prints the real `NO_PROGRESS_STREAK`.
   - **Accept:** Tests: 6 identical `read_file` calls in a row → loop, HIGH. The same 6 interleaved with other tools (streak ≤ 2) → not a loop. 6 `terminal` calls with the same args and same result → loop, MEDIUM.
 
-- [ ] **T3.3 Guardrail visibility**
+- [x] **T3.3 Guardrail visibility**
   - **Why:** It replaces the `GUARD_WARNINGS=unknown` and `GUARD_BLOCKS=unknown` placeholders.
   - **Do:** In `on_post_tool_call`, try `from agent.tool_result_classification import is_guardrail_refusal`, cached at module import inside a try. When it returns True for the result, set `extra["guardrail_refusal"] = True`. Count these in signals as `guard_blocks`. If the import isn't available, the counts render as `unknown`, the same as today. Warnings aren't observable through hooks, so keep `GUARD_WARNINGS=unknown` and add a parking-lot note.
   - **Accept:** A test with a monkeypatched `is_guardrail_refusal` shows `GUARD_BLOCKS=1`.
 
-- [ ] **T3.4 New classification rules (one pure function each)**
+- [x] **T3.4 New classification rules (one pure function each)**
   - **Why:** Real incidents are mostly API errors, rate limits, slowness, and tool failures, not just loops.
   - **Do:**
     1. Create `incident/rules.py` with `RULES: list[Callable[[Signals], Optional[ClassificationResult]]]` in priority order. `classify()` returns the first non-None result, or the fallback. Port the existing rules first with **no behaviour change**, and prove it with the existing tests. Then add these:

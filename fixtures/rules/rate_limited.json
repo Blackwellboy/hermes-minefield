@@ -1,0 +1,15 @@
+{
+  "about": ">=3 HTTP 429",
+  "expected": {
+    "classification": "PERFORMANCE_CONTENTION",
+    "severity": "MEDIUM",
+    "rule": "rate_limited"
+  },
+  "events": [
+    {
+      "repeat": 3,
+      "type": "api.error",
+      "http_status": 429
+    }
+  ]
+}

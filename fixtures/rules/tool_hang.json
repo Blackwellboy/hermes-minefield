@@ -1,0 +1,19 @@
+{
+  "about": "dispatched >120s ago, never finished",
+  "expected": {
+    "classification": "TOOL_BUG",
+    "severity": "MEDIUM",
+    "rule": "tool_hang"
+  },
+  "events": [
+    {
+      "type": "tool.requested",
+      "tool_name": "terminal",
+      "session_id_hash": "s",
+      "extra": {
+        "tool_call_id_hash": "c1"
+      },
+      "age_s": 300
+    }
+  ]
+}

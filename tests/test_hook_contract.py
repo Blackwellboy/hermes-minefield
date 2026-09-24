@@ -39,6 +39,7 @@ HOOK_FUNCS = {
     "on_session_start": hooks.on_session_start,
     "on_session_end": hooks.on_session_end,
     "on_session_finalize": hooks.on_session_finalize,
+    "agent_loop_stopped": hooks.on_agent_loop_stopped,
 }
 
 
@@ -134,7 +135,7 @@ def test_post_llm_call_content_len(fresh_recorder):
 
 def test_session_end_records_completion_flags(fresh_recorder):
     fire("on_session_end", completed=False, interrupted=True)
-    ev = [e for e in events(fresh_recorder) if e.extra.get("interrupted") is not None][0]
+    (ev,) = of_type(fresh_recorder, "turn.finished")
     assert ev.extra["completed"] is False
     assert ev.extra["interrupted"] is True
 
@@ -212,3 +213,48 @@ def test_legacy_events_without_result_fingerprint_still_classify():
         for i in range(12)
     ]
     assert classify(compute_signals(legacy)).classification == "AGENT_TOOL_LOOP"
+
+
+# --- T2.9 / T3.1 / T3.3 ------------------------------------------------------
+
+
+def test_turn_end_vs_real_session_end(fresh_recorder):
+    fire("on_session_end")
+    fire("on_session_finalize")
+    types = [e.type for e in events(fresh_recorder)]
+    assert types == ["turn.finished", "session.end"]
+
+
+def test_agent_loop_stopped_is_a_cancel_with_enum_reason_only(fresh_recorder):
+    fire("agent_loop_stopped")
+    hooks.on_agent_loop_stopped(reason="because the user typed something long and private")
+    a, b = of_type(fresh_recorder, "orch.cancel")
+    assert a.extra == {"interrupted": True, "reason": "user_stop"}
+    assert b.extra == {"interrupted": True}
+
+
+def test_post_api_request_emits_prepared_names_only(fresh_recorder):
+    fire("post_api_request")
+    prepared = of_type(fresh_recorder, "tool.prepared")
+    assert [e.tool_name for e in prepared] == ["read_file", "terminal"]
+    assert all(e.extra.get("tool_call_id_hash") for e in prepared)
+    assert all(e.tool_arg_fingerprint is None for e in prepared)
+
+
+def test_pre_tool_call_emits_requested_only(fresh_recorder):
+    fire("pre_tool_call")
+    assert [e.type for e in events(fresh_recorder)] == ["tool.requested"]
+
+
+def test_guardrail_refusal_is_counted(fresh_recorder, monkeypatch):
+    monkeypatch.setattr(hooks, "_is_guardrail_refusal", lambda result: "refused" in str(result))
+    fire("post_tool_call", result='{"refused": true}')
+    fire("post_tool_call", result='{"ok": true}', tool_call_id="call-9")
+    s = compute_signals(events(fresh_recorder))
+    assert s.guard_blocks == 1
+
+
+def test_guardrail_unobservable_is_unknown(fresh_recorder, monkeypatch):
+    monkeypatch.setattr(hooks, "_is_guardrail_refusal", None)  # older Hermes
+    fire("post_tool_call")
+    assert compute_signals(events(fresh_recorder)).guard_blocks is None
