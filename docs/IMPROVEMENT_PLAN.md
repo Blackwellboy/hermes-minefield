@@ -1,28 +1,36 @@
 # hermes-minefield: Improvement & Hermes Integration Plan
 
 > **Who this is for:** a coding agent (GLM, DeepSeek, or similar) working through the plan one task at a time, and the repo owner reviewing each PR.
-> **Written:** 2026-09-24, from a full review of `main` @ `6479671`.
+> **Written:** 2026-09-24, from a full review of `main` @ `6479671`. **Revised** the same day after owner review: added the diagnostic-integrity rule, T0.5 (Hermes compatibility matrix), T1.8 (verdicts), milestone ordering (hot-path safety moved into Milestone A), F6/F15/F16 raised in severity, and privacy-first remote dedupe.
+>
+> **Status:** `hermes-minefield` is **experimental**. Don't rely on its diagnoses until Gate A (§4.0) passes. This is about the Hermes adapter only. The `model-serving-minefield` registry and Doctor underneath are a separate, healthy system.
 > **Verified against:** hermes-agent `d350422b15863fc4c0b7962b122b625a0271516c` (v0.21.5) and model-serving-minefield `7b324f86d424c20bce177200851c968c1d70c536`.
 
 ---
 
 ## 0. How to execute this plan (read first, every session)
 
-1. **Work in order.** Do the tasks in ID order (T0.1 → T0.2 → …). Don't start a task until every task before it is ticked `[x]`. Each task says what it depends on.
+1. **Work in milestone order.** Follow the order in **§4.0 Milestones**, not the numeric order of the task IDs (IDs are stable references, the milestone list is the schedule). Don't start a task until every task before it in that list is ticked `[x]`. Don't start a milestone until the previous milestone's gate has passed.
 2. **One task = one branch = one PR.** Name the branch `plan/<task-id>-<short-slug>`, for example `plan/t1.1-hook-contract`. Keep each PR limited to its task. If you notice another problem while working, add a bullet to **§6 Parking lot** at the bottom of this file. Don't fix it in the current PR.
 3. **Read before you write.** Before changing a file, read all of it, plus every file that imports it (`grep -rn "<module>" hermes_minefield tests`).
 4. **Tests first when fixing a bug.** Write the failing test and run it to watch it fail. Then fix the code and run it to watch it pass. Put the failing output in the PR description.
 5. **Gate every PR on the checks in §0.1.** All of them must pass locally before you push.
 6. **Don't improvise on facts.** Section 2 lists the Hermes hook argument names, which were checked against Hermes source. If the code you see disagrees with this plan, or a step is ambiguous, **stop**. Write down the discrepancy in the PR description and ask the owner. Don't guess.
-7. **Never do these things** (they are hard rules, even if a task seems to need one):
+7. **Diagnostic integrity (the most important rule in this plan).** Every command result carries an explicit `verdict`:
+   - `PASS`: the target was tested and the findings are valid,
+   - `FAIL`: the target was tested and something is wrong,
+   - `UNKNOWN`: the target could not be meaningfully tested (unreachable, no probes ran, no recorder data, stale or missing evidence).
+
+   **Missing evidence must never become negative evidence. `UNKNOWN` is not `PASS`.** This applies to `check`, `doctor`, `wtf`, cache reads, recorder gaps, and target resolution. Any change that can turn "couldn't test" into something that looks clean is a release blocker.
+8. **Never do these things** (they are hard rules, even if a task seems to need one):
    - Weaken, skip, or delete an existing test to make CI pass. You may *rewrite* a test when a task explicitly changes that behaviour. Say so in the PR.
    - Add automatic GitHub submission. Let model output approve anything. Send conversation text, tool arguments, or tool results off the machine.
    - Store raw tool arguments, tool results, prompts, or API keys on disk. Store hashes, lengths, and counts only.
    - Add new runtime dependencies. The only runtime dependency is `model-serving-minefield`, and PyYAML stays optional.
    - Open PRs or issues against `NousResearch/hermes-agent` or any repo other than `Blackwellboy/hermes-minefield`. T6.4 is the only exception, and it needs **written owner approval**.
    - Change a public command name or flag without keeping the old one as an alias.
-8. **Tick the box.** When a task is merged, change its `- [ ]` to `- [x]` in this file (in the same PR is fine).
-9. **Commit style:** `<area>: <imperative summary> (T<id>)`, for example `recorder: read Hermes 'args' kwarg for tool fingerprints (T1.1)`.
+9. **Tick the box.** When a task is merged, change its `- [ ]` to `- [x]` in this file (in the same PR is fine).
+10. **Commit style:** `<area>: <imperative summary> (T<id>)`, for example `recorder: read Hermes 'args' kwarg for tool fingerprints (T1.1)`.
 
 ### 0.1 The local check gate (run before every push)
 
@@ -56,7 +64,7 @@ Each finding below was reproduced during the review. Severity: 🔴 critical, �
 | F3 | 🟠 | API hooks read the wrong keys: `status`/`http_status` (should be `status_code`), `wall_ms`/`duration_ms` (should be `api_duration` in **seconds**), `ttft_ms` (should be derived from `first_chunk_at - started_at`), `request_id` (should be `api_request_id`), `content_len` (should be `assistant_content_chars`). `api_request_error` passes `error` as a **dict**, so `error_class` is recorded as `"dict"`. | Recorded rows: `{'type':'api.error', 'error_class':'dict'}`; latency, status, and TTFT always missing | T1.1 |
 | F4 | 🟠 | `post_llm_call` reads `content`/`response`, but Hermes sends `assistant_response`, so `content_len` is always 0. | `turn.end … content_len: 0` for `"hello world"` | T1.1 |
 | F5 | 🟠 | `hermes plugins validate .` **fails**: `plugin.yaml` uses `hooks:`, but admission requires `provides_hooks:`. This blocks catalog submission. | `✗ declared hooks — undeclared hooks registered` | T0.4 |
-| F6 | 🟠 | `check` against an unreachable endpoint prints an empty "0 clean / 0 problems" report, **exits 0, and caches it** as the last good check. `RunResult.reachable`/`.error` are ignored. | `hermes minefield check` with the server down → rc=0, cached | T1.3 |
+| F6 | 🔴 | `check` against an unreachable endpoint prints an empty "0 clean / 0 problems" report, **exits 0, and caches it** as the last good check. `RunResult.reachable`/`.error` are ignored. | `hermes minefield check` with the server down → rc=0, cached | T1.3 |
 | F7 | 🟠 | The loop detector counts *total* identical-argument calls over the whole window, with no notion of progress. Legitimate polling (`terminal "git status"` × 10) and re-reading a file after editing it both count as loops. Hermes's own guardrails use "same args **and** same result" plus idempotent/mutating tool classes. | Design review vs `agent/tool_guardrails.py` | T1.2, T3.2 |
 | F8 | 🟠 | `check`/`doctor` never send an API key, and target resolution re-implements a small part of Hermes's provider logic. Authenticated endpoints fail, and so do named providers and env-configured endpoints. | `minefield.api.run_checks(api_key=…)` exists but is never passed | T2.3 |
 | F9 | 🟡 | Cache TTL is never enforced (`is_fresh` and `fingerprint_cache_ttl_days` are unused), so a cached result is served forever. | grep: no callers | T1.4 |
@@ -65,8 +73,8 @@ Each finding below was reproduced during the review. Severity: 🔴 critical, �
 | F12 | 🟡 | `contribute` lists the incident itself as its own "duplicate". It also silently falls back to the latest incident when `--incident` is wrong. | `search_local(symptom, known=list_incidents())` includes itself | T1.6, T4.3 |
 | F13 | 🟡 | Uncaught exceptions reach Hermes: no `base_url` configured, `--max-requests abc` in slash mode, and so on. | `resolve_target` raises `ValueError`; `int(mr)` unguarded | T1.5 |
 | F14 | 🟡 | Every `wtf` run writes an incident file, even for quiet or expected windows, which clutters `issues`. `index.jsonl` grows without bound. | quiet `wtf` → `INC-…json` written | T1.6, T2.7 |
-| F15 | 🟡 | Disk writes happen inside hook callbacks (`record()` → `_flush_locked()`). `pre_tool_call` is timeout-bounded and **fails closed** in Hermes, so a slow disk can block the agent's tools. | Hermes `hooks.md`: `pre_tool_call` timeout → tool blocked | T2.4 |
-| F16 | 🟡 | Several Hermes processes (CLI and gateway) append to *and rotate* one shared `events.jsonl` with read-modify-write, which loses data under concurrency. Cache, incident, and draft writes aren't atomic. Files are created world-readable by default umask. | `_rotate_disk` uses `write_text` on the shared file | T2.5, T2.6 |
+| F15 | 🟠 | Disk writes happen inside hook callbacks (`record()` → `_flush_locked()`). `pre_tool_call` is timeout-bounded and **fails closed** in Hermes, so a slow disk can block the agent's tools. Minefield itself could become the reason Hermes stops working. | Hermes `hooks.md`: `pre_tool_call` timeout → tool blocked | T2.4 |
+| F16 | 🟠 | Several Hermes processes (CLI and gateway) append to *and rotate* one shared `events.jsonl` with read-modify-write, which loses data under concurrency. For an evidence tool, silently losing evidence is high severity. Cache, incident, and draft writes aren't atomic. Files are created world-readable by default umask. | `_rotate_disk` uses `write_text` on the shared file | T2.5, T2.6 |
 | F17 | 🟡 | Config is read from `plugins.entries.<id>` directly, but Hermes's canonical location is `plugins.entries.<id>.settings` (`ctx.get_config`). Bad values (`lite_max_requests: abc`) crash `register()`. | `config.py` | T2.2 |
 | F18 | ⚪ | `HERMES_HOME` env is checked *before* `hermes_constants.get_hermes_home()`, which bypasses Hermes's context-local/profile override. | `paths.py` | T2.1 |
 | F19 | ⚪ | The root `__init__.py` inserts the plugin directory at `sys.path[0]` for the whole Hermes process. | `__init__.py` | T2.8 |
@@ -152,6 +160,27 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 
 ## 4. The plan
 
+### 4.0 Milestones (the schedule)
+
+**Milestone A: make it trustworthy.** Order matters. Hot-path safety comes right after the hook fix, because once T1.1 lands the plugin records real data and people start relying on it.
+
+1. T0.1 dev environment → T0.2 lint → T0.3 pinned CI → T0.4 Hermes validator → **T0.5 Hermes compatibility matrix**
+2. T1.1 real Hermes hook contract
+3. T1.3 unreachable endpoint is never green, and **T1.8 diagnostic-integrity verdicts** on every command
+4. T2.4 no I/O on the hot hook path
+5. T1.2 same-args + same-result loop detection
+6. T2.5 multi-process-safe recorder
+7. T1.4 cache TTL (a cache read is evidence too)
+8. T3.8 real Hermes end-to-end scenario suite
+
+**Gate A:** install into one real Hermes environment and run the T3.8 scenario suite: a normal tool-using turn, intentional tool errors, a real no-progress loop, a dead endpoint, and two concurrent Hermes processes. Minefield must classify every scenario correctly, and every command must report an honest `verdict`. Nothing in Milestone B starts until Gate A passes.
+
+**Milestone B: robustness and better diagnosis.** T1.5, T1.6, T1.7, T2.1, T2.2, T2.3, T2.6, T2.7, T2.8, T2.9, T3.1, T3.2, T3.3, T3.4, T3.5, T3.6, T3.7.
+
+**Milestone C: contribution workflow and Hermes-native features.** T4.1–T4.5, T5.1–T5.5.
+
+**Milestone D: release.** T6.1, T6.2, T6.3. T6.4 (catalog) stays locked until the owner approves it in writing **and** Gate A's scenario suite passes on the release commit.
+
 ### Phase 0: Baseline and tooling (no behaviour change)
 
 - [ ] **T0.1 Reproducible dev environment script**
@@ -208,6 +237,23 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
        ```
        If the validator can't import `minefield`, first add a step that pip-installs Minefield at the pinned SHA. Note in the PR whether that step was needed.
   - **Accept:** `hermes plugins validate .` prints `✓ declared hooks — matches registrations` and exits 0, both locally and in CI.
+
+- [ ] **T0.5 Hermes compatibility matrix** (depends on T0.4)
+  - **Why:** The original bug came from coding against an assumed Hermes contract. Pinning one Hermes SHA reproduces today's behaviour, but the manifest will advertise a *range* (`requires_hermes`). CI has to prove that range.
+  - **Do:**
+    1. Declare the supported range as `>=0.21,<0.22` for now. Widen it only after CI proves the wider range.
+    2. Add a CI job `hermes-compat` with a matrix over three Hermes refs:
+       - minimum supported release: `v2026.8.31` (0.21.0), commit `29112bef099274229cadff79cdff7bf7b99c4b77`
+       - pinned known-good: `d350422b15863fc4c0b7962b122b625a0271516c`
+       - latest release: `v2026.9.24` (0.21.5), commit `f97608f178d1ffeca59860195ab7da295f7c8e5f`
+
+       Add a fourth, non-blocking (`continue-on-error: true`) entry for Hermes `main`, so upcoming breaks show up early.
+    3. Each matrix entry installs that Hermes ref, runs `hermes plugins validate .`, and runs `tests/test_hermes_contract.py`. That test:
+       - asserts every hook in `plugin.yaml` `provides_hooks` is in that version's `hermes_cli.plugins.VALID_HOOKS`,
+       - parses Hermes's own fire sites for the kwargs names the plugin relies on (for example, `ast`-walk `model_tools.py` for the `invoke_hook("post_tool_call", ...)` call and collect its keyword names). It fails if a key listed in `tests/fixtures/hermes_hook_payloads.json` is missing from that Hermes version,
+       - replays the contract fixtures through Hermes's own `invoke_hook` with the plugin loaded.
+    4. When bumping the known-good pin or widening the range, update this list and the §2 tables in the same PR.
+  - **Accept:** All three blocking matrix entries are green. Deliberately renaming a key in the fixture makes the job fail.
 
 ---
 
@@ -269,7 +315,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Do:**
     1. In `commands/dispatch.py`, add `_guard(fn, **kw) -> dict`. It calls `fn(**kw)` and catches `ValueError` and `PermissionError`, returning `{"ok": False, "text": str(e)}`. It catches any other `Exception`, returning `{"ok": False, "text": f"minefield: internal error ({type(e).__name__}). Run with HERMES_PLUGINS_DEBUG=1 for details."}`, and logs it with `logger.debug(..., exc_info=True)`. Use it for every command in both `handle_cli` and `handle_slash`.
     2. In the slash path, parse `--max-requests` with try/except, and reply "`--max-requests` must be an integer" on error.
-    3. Document exit codes in the README: `0` ok, `1` error, `2` blocked/needs confirmation.
+    3. Document exit codes in the README, as defined in T1.8: `0` PASS, `1` FAIL or internal error, `2` blocked/needs confirmation, `3` UNKNOWN.
     4. Tests: slash `check` with no config and no base_url returns a string containing "base_url", with no raise. Slash `check --max-requests abc` returns the integer message. CLI returns 1 for both.
   - **Accept:** Tests pass. `grep -n "raise" hermes_minefield/commands/*.py` shows only deliberate raises inside helpers.
 
@@ -285,6 +331,18 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Why:** F21.
   - **Do:** In `commands/check.py`, replace both `assert`s with `if …: raise RuntimeError("HARD_BUDGET_VIOLATION: …")`. They're caught by T1.5's guard and reported. Remove the `assert` in `render.extract_summary_counts`, which is unreachable. Keep the logic.
   - **Accept:** `grep -rn "^\s*assert " hermes_minefield` returns nothing.
+
+- [ ] **T1.8 Diagnostic-integrity verdicts on every command** (Milestone A, alongside T1.3)
+  - **Why:** It enforces §0 rule 7 in code, not just in prose.
+  - **Do:**
+    1. Add `hermes_minefield/verdict.py` with `PASS = "PASS"`, `FAIL = "FAIL"`, `UNKNOWN = "UNKNOWN"`.
+    2. Every command result dict gets a `verdict` key, and the rendered text starts or ends with `Verdict: <X>`:
+       - `check`/`doctor`: `UNKNOWN` when unreachable, when zero probes ran, or when the target can't be resolved. `FAIL` when any finding is a problem. `PASS` only when probes ran and every finding is clean. Inconclusive findings with no problems → `UNKNOWN`.
+       - `wtf`: `UNKNOWN` when the frozen window has no events, or when the recorder reports a gap. `FAIL` when the classification is an anomaly. `PASS` only for `EXPECTED_BEHAVIOUR` with events present.
+       - `status`: shows the cached verdict and marks a stale cache as `UNKNOWN (stale)`.
+    3. Exit codes: `PASS` → 0, `FAIL` → 1, `UNKNOWN` → 3, blocked/needs confirmation → 2, internal error → 1.
+    4. A test per command proves that "couldn't test" never renders as `PASS`.
+  - **Accept:** `grep -rn "verdict" hermes_minefield/commands` shows every command setting it. The tests pass.
 
 ---
 
@@ -444,7 +502,13 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     2. Loads plugins with Hermes's own `PluginManager` (find the public loader in `hermes_cli/plugins.py`, for example the function that `hermes plugins list` uses). Asserts the `minefield` command and all `provides_hooks` are registered.
     3. Fires the hooks through Hermes's own `invoke_hook(...)` with the §2.1 kwargs. Runs `handle_slash("wtf 1m --json")` and asserts on the classification.
     4. Adds a CI job `e2e` that installs Hermes at the pinned ref and runs `pytest -m e2e`.
-  - **Accept:** The e2e job is green in CI. If the loader API is private or unstable, fall back to calling `hermes minefield status` as a subprocess, and document that.
+    5. Scenario suite (Gate A). Each scenario drives Hermes's `invoke_hook` with realistic kwargs, then asserts both the classification and the verdict:
+       - normal tool use (distinct reads, one write) → `EXPECTED_BEHAVIOUR`, `PASS`
+       - intentional tool errors (`status="error"`) → failures recorded, not counted as success
+       - a real no-progress loop (same args, same result, consecutive) → `AGENT_TOOL_LOOP`, `FAIL`
+       - a dead endpoint for `check` → `UNKNOWN`, nothing cached, exit 3
+       - two concurrent recorder processes (use `multiprocessing`) writing at the same time → a fresh `wtf` process sees every event from both, with none lost
+  - **Accept:** The e2e job is green in CI and on all T0.5 matrix entries. If the loader API is private or unstable, fall back to calling `hermes minefield status` as a subprocess, and document that.
 
 ---
 
@@ -466,8 +530,9 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Accept:** A test covers both paths.
 
 - [ ] **T4.4 Remote duplicate search before submit (read-only)**
-  - **Do:** Before showing the submit prompt, call GitHub search (`GET /search/issues?q=repo:<repo>+is:issue+in:title+<top 5 tokens>`) with a 10 s timeout. Unauthenticated calls are allowed. Show up to 3 hits as "Possible upstream duplicates". Treat any failure as "(remote dedupe unavailable)", never as an error. The config `remote_dedupe: true` (default) can disable it. No incident data is sent except the title tokens, which are already sanitized.
-  - **Accept:** A test with a monkeypatched `urlopen` covers the hits, a timeout, and the disabled case.
+  - **Why privacy-first:** Even sanitized title tokens can contain model names, runtime names, failure signatures, or private project terms. The plugin promises local, metadata-only diagnosis, with publication only as a deliberate human step.
+  - **Do:** Remote search is **off by default** (`remote_dedupe: false`). It runs only when the user passes `--remote-dedupe` during `contribute --github`, or has set `remote_dedupe: true`. Before anything leaves the machine, print `Searching GitHub for these sanitized terms: <terms>`. Then call `GET /search/issues?q=repo:<repo>+is:issue+in:title+<top 5 tokens>` with a 10 s timeout and show up to 3 hits as "Possible upstream duplicates". Treat any failure as "(remote dedupe unavailable)", never as an error. Nothing except those printed terms is sent.
+  - **Accept:** A test with a monkeypatched `urlopen` covers the hits, a timeout, the default-off case (no network call at all), and that the printed terms equal the terms sent.
 
 - [ ] **T4.5 Gateway safety for `--submit`**
   - **Why:** In gateway mode (Telegram, Discord), anyone who can type in the chat can run `/minefield contribute --submit`, and the host's `GITHUB_TOKEN` would be used.
@@ -491,7 +556,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     author: Blackwellboy
     license: MIT
     kind: standalone
-    requires_hermes: ">=0.21"
+    requires_hermes: ">=0.21,<0.22"   # must match T0.5's proven range
     python_dependencies:
       - "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@7b324f86d424c20bce177200851c968c1d70c536"
     provides_hooks: [ …the exact registered list… ]
@@ -504,7 +569,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
       incident_retention_days: {type: int, default: 90}
       loop_streak_threshold: {type: int, default: 5}
       repo_allowlist: {type: list}
-      remote_dedupe: {type: bool, default: true}
+      remote_dedupe: {type: bool, default: false}
       allow_submit_from_chat: {type: bool, default: false}
       auto_lite: {type: str, default: "false", description: "false | true"}
     ```
@@ -553,7 +618,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Why:** This is the proper way into Hermes. The catalog is human-reviewed and pins an exact SHA, and users get `hermes plugins install hermes-minefield`. Upstreaming into Hermes core isn't needed and isn't recommended: Minefield is framework-neutral, and this plugin is the adapter.
   - **Do (after approval):**
     1. Read `plugin-catalog/README.md` in hermes-agent at the then-current `main` for the exact checklist.
-    2. Draft `plugin-catalog/hermes-minefield.yaml`: `name`, `repo`, `sha` = the full 40-hex SHA of the `v0.2.0` tag commit, `tier: community`, `category: tools`, `maintainer: Blackwellboy`, `version: "0.2.0"`, `requires_hermes: ">=0.21"`, and `capabilities` matching the manifest.
+    2. Draft `plugin-catalog/hermes-minefield.yaml`: `name`, `repo`, `sha` = the full 40-hex SHA of the `v0.2.0` tag commit, `tier: community`, `category: tools`, `maintainer: Blackwellboy`, `version: "0.2.0"`, `requires_hermes` matching the manifest, and `capabilities` matching the manifest.
     3. Hand the YAML and a PR description to the owner. **The owner opens the PR**, because catalog admission requires the PR author to own the plugin repo.
   - **Accept:** The owner has a ready-to-submit entry, and `hermes plugins validate` is green at the pinned SHA.
 
@@ -561,7 +626,8 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 
 ## 5. Definition of done (whole plan)
 
-- Every task is ticked. CI is green: lint, unit tests on 3.10/3.12/3.13, Hermes `plugins validate`, and e2e.
+- Every task is ticked. CI is green: lint, unit tests on 3.10/3.12/3.13, Hermes `plugins validate`, the T0.5 compatibility matrix, and e2e.
+- Every command reports an honest `verdict`. No path turns missing evidence into `PASS`.
 - On a real Hermes session, `hermes minefield wtf`:
   - classifies a normal tool-using turn as `EXPECTED_BEHAVIOUR`,
   - flags a genuine same-args/same-result streak as `AGENT_TOOL_LOOP`,
