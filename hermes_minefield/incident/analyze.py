@@ -55,6 +55,8 @@ def analyze_events(
             "executed": signals.executed_by_tool,
             "total_prepared": signals.total_prepared,
             "total_executed": signals.total_executed,
+            "failed": signals.failed_by_tool,
+            "total_failed": signals.total_failed,
             "dominant_tool": tool,
         },
         repeated_call_counts={
@@ -110,6 +112,7 @@ def render_incident(artifact: IncidentArtifact) -> str:
         f"ACTUAL_EXECUTIONS={exec_total}",
         f"REPEATED_EQUIVALENT_CALLS={equiv}",
         f"DOMINANT_TOOL={dominant_tool or 'unknown'}",
+        f"TOOL_FAILURES={artifact.actual_execution_counts.get('total_failed', 0)}",
         f"NO_PROGRESS_STREAK={no_progress_streak}",
         "GUARD_WARNINGS=unknown",
         "GUARD_BLOCKS=unknown",

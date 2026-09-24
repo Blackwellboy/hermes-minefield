@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from ..recorder.events import (
     API_ERROR,
     TOOL_EXECUTED,
+    TOOL_FAILED,
     TOOL_PREPARED,
     TOOL_REQUESTED,
     RecorderEvent,
@@ -22,6 +23,7 @@ from .types import (
     SEVERITY_HIGH,
     SEVERITY_LOW,
     SEVERITY_MEDIUM,
+    TOOL_BUG,
     UI_RENDERING_BUG,
     UNKNOWN,
 )
@@ -38,12 +40,15 @@ class AnalysisSignals:
     total_api_errors: int
     window_seconds: float
     dominant_tool: str | None
+    failed_by_tool: dict[str, int] = field(default_factory=dict)
+    total_failed: int = 0
 
 
 def compute_signals(events: Sequence[RecorderEvent]) -> AnalysisSignals:
     prepared: Counter[str] = Counter()
     executed: Counter[str] = Counter()
     requested: Counter[str] = Counter()
+    failed: Counter[str] = Counter()
     exec_fps: dict[str, Counter[str]] = defaultdict(Counter)
     api_errors = 0
     ts = [e.ts for e in events]
@@ -65,6 +70,8 @@ def compute_signals(events: Sequence[RecorderEvent]) -> AnalysisSignals:
                 if e.result_fingerprint:
                     key = f"{key}|{e.result_fingerprint}"
                 exec_fps[name][key] += 1
+        elif e.type == TOOL_FAILED:
+            failed[name] += 1
         elif e.type == API_ERROR:
             api_errors += 1
 
@@ -86,6 +93,8 @@ def compute_signals(events: Sequence[RecorderEvent]) -> AnalysisSignals:
         total_prepared=sum(prepared.values()),
         total_executed=sum(executed.values()),
         total_api_errors=api_errors,
+        failed_by_tool=dict(failed),
+        total_failed=sum(failed.values()),
         window_seconds=window,
         dominant_tool=dominant,
     )
@@ -143,6 +152,23 @@ def classify(signals: AnalysisSignals) -> ClassificationResult:
                 f"{prep} `{tool}` preparations; {exe} executions ({equiv} equivalent-argument repeats)."
             ),
         )
+
+    # Tool failure storm: one tool failing repeatedly is not "expected behaviour".
+    if signals.failed_by_tool:
+        bad_tool, n_failed = max(signals.failed_by_tool.items(), key=lambda kv: kv[1])
+        n_exec = max(n_failed, signals.executed_by_tool.get(bad_tool, 0))
+        if n_failed >= 5 and n_failed >= 0.5 * n_exec:
+            return ClassificationResult(
+                classification=TOOL_BUG,
+                severity=SEVERITY_MEDIUM,
+                likely_root_cause=f"`{bad_tool}` failed {n_failed} of {n_exec} executions in the window.",
+                recommended_action="inspect the tool's errors (hermes logs); check its config/permissions.",
+                serving_failure=False,
+                is_engineering_bug=True,
+                is_minefield_trap=False,
+                confidence="MEDIUM",
+                observed_symptom=f"{n_failed}/{n_exec} `{bad_tool}` executions failed.",
+            )
 
     if signals.total_api_errors >= 3:
         return ClassificationResult(

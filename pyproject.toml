@@ -35,6 +35,8 @@ ignore = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["gate_a: slow multi-process Gate A scenario suite (run with -m gate_a)"]
+addopts = "-m 'not gate_a'"
 # Raised while importing Hermes internals, not by this plugin.
 filterwarnings = ["ignore:invalid escape sequence:DeprecationWarning"]
 pythonpath = ["."]

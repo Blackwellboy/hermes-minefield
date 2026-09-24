@@ -122,3 +122,6 @@ jobs:
 
       - name: Hook contract + real-loader tests
         run: pytest -q tests/test_hermes_contract.py tests/e2e
+
+      - name: Gate A scenario suite (separate Hermes + CLI processes)
+        run: pytest -q -m gate_a tests/e2e

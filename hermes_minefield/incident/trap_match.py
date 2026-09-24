@@ -39,6 +39,7 @@ def match_traps(
         "AGENT_LOOP",
         "EXPECTED_BEHAVIOUR",
         "HERMES_ORCHESTRATION_BUG",
+        "TOOL_BUG",
     }:
         # Product/UI/agent bugs are explicitly NOT Minefield traps by default.
         return []

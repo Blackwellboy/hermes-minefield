@@ -498,7 +498,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Do:** Replace every `assert A or B` in `tests/` with exact assertions against the structured result dict (`classification`, `ok`, `blocked`, …) instead of substring checks on text. Remove the `__import__("yaml").dump(cfg) if False else …` construct in `test_commands_dispatch.py`. List every assertion you changed in the PR.
   - **Accept:** `grep -rn "assert .* or " tests` returns nothing. Coverage (`pytest --cov=hermes_minefield`, dev-only dependency) is ≥ 85%. Report the number.
 
-- [ ] **T3.8 End-to-end test against a real Hermes plugin loader**
+- [x] **T3.8 End-to-end test against a real Hermes plugin loader**
   - **Why:** It's the regression net for the whole F1–F5 class of bugs.
   - **Do:** Create `tests/e2e/test_hermes_load.py`, marked `@pytest.mark.e2e` and skipped when `hermes_cli` isn't importable. It:
     1. Makes a temporary `HERMES_HOME` with `plugins/hermes-minefield` symlinked to the repo, plus a config that enables it.
