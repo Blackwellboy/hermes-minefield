@@ -18,6 +18,7 @@ def run_status(*, base_url: str | None = None, model: str | None = None) -> dict
     fp_short = None
     cache_age = None
     last_summary = None
+    last_verdict = None
     try:
         target = resolve_target(base_url=base_url, model=model)
         # Must match check()'s Lite-cache key (includes reasoning_mode=from_config).
@@ -37,7 +38,13 @@ def run_status(*, base_url: str | None = None, model: str | None = None) -> dict
                 c, p, i = clean, problem, inconclusive
             else:
                 c, p, i = entry.clean, entry.problem, entry.inconclusive
-            last_summary = f"  clean={c} problem={p} inconclusive={i} requests={entry.requests_executed}"
+            from .check import cached_verdict
+
+            last_verdict = cached_verdict(entry.summary)
+            last_summary = (
+                f"  verdict={last_verdict} clean={c} problem={p} inconclusive={i} "
+                f"requests={entry.requests_executed}"
+            )
     except Exception as e:
         cache_age = f"target unresolved: {type(e).__name__}"
 
@@ -73,4 +80,10 @@ def run_status(*, base_url: str | None = None, model: str | None = None) -> dict
         auto_lite=cfg.auto_lite,
     )
     n_cache = len(load_cache().get("entries") or {})
-    return {"ok": True, "text": text, "cache_entries": n_cache, "recorder": stats.__dict__}
+    return {
+        "ok": True,
+        "last_verdict": last_verdict,
+        "text": text,
+        "cache_entries": n_cache,
+        "recorder": stats.__dict__,
+    }

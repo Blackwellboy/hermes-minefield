@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .. import verdict as V
 from ..incident.analyze import analyze_events, render_incident
 from ..privacy import stable_hash
 from ..recorder.store import get_recorder
@@ -31,6 +32,23 @@ def parse_window(raw: str | None, default_seconds: float = 300.0) -> float:
     return float(n)
 
 
+def incident_verdict(classification: str, event_count: int, *, truncated: bool = False) -> tuple[str, str]:
+    """PASS only for aligned, complete evidence; no evidence is UNKNOWN, never clean."""
+    if event_count == 0:
+        return V.UNKNOWN, (
+            "no recorder events in this window — nothing happened, or the recorder is not "
+            "running in the Hermes process (is the plugin enabled?)"
+        )
+    if classification == "UNKNOWN":
+        return V.UNKNOWN, "events recorded, but no classification fits them"
+    if classification == "EXPECTED_BEHAVIOUR":
+        if truncated:
+            return V.UNKNOWN, "looks normal, but the window hit recorder_max_events so evidence is incomplete"
+        return V.PASS, "recorded activity looks normal"
+    note = " (window truncated at recorder_max_events)" if truncated else ""
+    return V.FAIL, f"anomaly: {classification}{note}"
+
+
 def run_wtf(
     *,
     window: str | None = None,
@@ -52,11 +70,14 @@ def run_wtf(
         since_seconds=since,
         persist=persist,
     )
+    truncated = len(events) >= rec.max_events
+    verdict, reason = incident_verdict(artifact.classification, len(events), truncated=truncated)
     # Concise UX; sources available in structured result for debug/tests.
     body = render_incident(artifact)
     return {
         "ok": True,
-        "text": f"Minefield:\n{intro}\n\n{body}",
+        "verdict": verdict,
+        "text": f"Minefield:\n{intro}\n\n{body}\n\n{V.line(verdict, reason)}",
         "incident_id": artifact.incident_id,
         "classification": artifact.classification,
         "severity": artifact.severity,

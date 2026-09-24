@@ -299,7 +299,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
        - Old-format events without `result_fingerprint` still classify as before, using the existing fixture `fixtures/wtf_real_tool_loop.json`.
   - **Accept:** All three tests pass, and the existing fixture tests still pass.
 
-- [ ] **T1.3 `check`/`doctor` must fail loudly when nothing ran**
+- [x] **T1.3 `check`/`doctor` must fail loudly when nothing ran**
   - **Why:** F6.
   - **Do:** In `commands/check.py` and `commands/doctor.py`, after `run_checks(...)`:
     1. If `getattr(result, "reachable", True) is False` or `getattr(result, "error", None)`, return `{"ok": False, "text": "Minefield Lite could not reach <redacted url shape>: <error>", "requests_executed": result.requests_executed, "error": result.error}`. Use `privacy.redact_text` on anything you print. **Don't cache.**
@@ -335,7 +335,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Do:** In `commands/check.py`, replace both `assert`s with `if …: raise RuntimeError("HARD_BUDGET_VIOLATION: …")`. They're caught by T1.5's guard and reported. Remove the `assert` in `render.extract_summary_counts`, which is unreachable. Keep the logic.
   - **Accept:** `grep -rn "^\s*assert " hermes_minefield` returns nothing.
 
-- [ ] **T1.8 Diagnostic-integrity verdicts on every command** (Milestone A, alongside T1.3)
+- [x] **T1.8 Diagnostic-integrity verdicts on every command** (Milestone A, alongside T1.3)
   - **Why:** It enforces §0 rule 7 in code, not just in prose.
   - **Do:**
     1. Add `hermes_minefield/verdict.py` with `PASS = "PASS"`, `FAIL = "FAIL"`, `UNKNOWN = "UNKNOWN"`.

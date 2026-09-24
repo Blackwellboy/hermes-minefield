@@ -72,4 +72,6 @@ def minefield_command(args: argparse.Namespace) -> int:
     text = result.get("text") or ""
     if text:
         print(text)
-    return 0 if result.get("ok", False) else (2 if result.get("blocked") else 1)
+    from ..verdict import exit_code
+
+    return exit_code(result)
