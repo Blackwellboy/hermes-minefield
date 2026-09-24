@@ -88,7 +88,7 @@ def test_draft_redacts_secrets(tmp_hermes_home):
     body = draft.body
     assert "secretpass" not in body
     assert "sk-should-not-appear" not in body
-    assert "10.0.0.5" not in body or "[REDACTED" in body
+    assert "10.0.0.5" not in body
 
 
 def test_closed_not_assumed_fixed():

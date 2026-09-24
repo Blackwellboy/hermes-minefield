@@ -494,7 +494,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Do:** Add a global `--json` flag to every `hermes minefield` subcommand. It prints `json.dumps(result_without_text, indent=2, sort_keys=True, default=str)`, run through `privacy.sanitize_mapping`. In `render_incident`, remove the duplicated human lines (`Actual executions:`, `Preparations:`, `Repeated equivalent calls:`), which repeat the `KEY=VALUE` block.
   - **Accept:** `hermes minefield wtf --json | python -m json.tool` succeeds. There's a test for each command's JSON shape.
 
-- [ ] **T3.7 Tighten weak tests**
+- [x] **T3.7 Tighten weak tests**
   - **Why:** F25.
   - **Do:** Replace every `assert A or B` in `tests/` with exact assertions against the structured result dict (`classification`, `ok`, `blocked`, …) instead of substring checks on text. Remove the `__import__("yaml").dump(cfg) if False else …` construct in `test_commands_dispatch.py`. List every assertion you changed in the PR.
   - **Accept:** `grep -rn "assert .* or " tests` returns nothing. Coverage (`pytest --cov=hermes_minefield`, dev-only dependency) is ≥ 85%. Report the number.

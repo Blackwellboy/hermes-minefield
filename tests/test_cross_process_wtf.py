@@ -269,10 +269,8 @@ def test_i_no_persisted_quiet_window(tmp_hermes_home, rec_path):
     reset_recorder_for_tests(persist=True, path=rec_path)
     out = run_wtf(window="1m", persist=False)
     assert out["event_count"] == 0
-    assert "quiet" in out["text"].lower() or out["classification"] in {
-        "UNKNOWN",
-        "EXPECTED_BEHAVIOUR",
-    }
+    assert out["classification"] == "UNKNOWN"
+    assert out["verdict"] == "UNKNOWN"
 
 
 def test_j_secrets_absent_from_persisted(tmp_hermes_home, rec_path):

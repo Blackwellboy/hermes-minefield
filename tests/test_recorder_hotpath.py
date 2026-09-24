@@ -92,7 +92,7 @@ def test_stop_is_idempotent_and_writes_pending(tmp_path):
     assert [e.event_id for e in load_recent_persisted_events(path=tmp_path / "events.jsonl")] == ["last"]
     # After stop, recording still works in memory but nothing restarts the thread.
     r.record(RecorderEvent(type="tool.executed", tool_name="t"))
-    assert r._thread is None or not r._thread.is_alive()
+    assert not (r._thread and r._thread.is_alive())
 
 
 def test_record_is_cheap():
