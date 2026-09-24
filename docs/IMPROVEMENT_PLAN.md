@@ -356,7 +356,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Do:** In `paths.hermes_home()`, first try `from hermes_constants import get_hermes_home; return Path(get_hermes_home()).expanduser().resolve()`. On `ImportError`, fall back to `HERMES_HOME`/`HERMES_HOME_DIR`, then to `~/.hermes`. Tests: with `hermes_constants` importable (Hermes is installed in the dev env), `HERMES_HOME` set via monkeypatch is still honoured, because Hermes reads it. With `sys.modules["hermes_constants"] = None` (which simulates it being absent), the env fallback works.
   - **Accept:** Tests pass. The existing `tmp_hermes_home` fixture still isolates everything.
 
-- [ ] **T2.2 Canonical, validated config**
+- [x] **T2.2 Canonical, validated config**
   - **Why:** F17.
   - **Do:**
     1. In `MinefieldPluginConfig.from_mapping`, the lookup order is: `plugins.entries["hermes-minefield"].settings` → `plugins.entries["hermes-minefield"].config` → `plugins.entries["hermes-minefield"]` (legacy) → top-level `minefield:` (legacy).
