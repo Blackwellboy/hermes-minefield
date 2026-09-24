@@ -67,16 +67,32 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
 
     subs.add_parser("clear-cache", help="Clear fingerprint Lite cache")
 
+    for p in subs.choices.values():
+        p.add_argument("--json", action="store_true", help="machine-readable output (sanitized)")
+
     subparser.set_defaults(func=minefield_command)
 
 
 def minefield_command(args: argparse.Namespace) -> int:
+    from ..verdict import exit_code
     from . import dispatch
 
     result = dispatch.handle_cli(args)
-    text = result.get("text") or ""
-    if text:
-        print(text)
-    from ..verdict import exit_code
-
+    if getattr(args, "json", False):
+        print(to_json(result))
+    else:
+        text = result.get("text") or ""
+        if text:
+            print(text)
     return exit_code(result)
+
+
+def to_json(result: dict) -> str:
+    """Structured result without the human text, run through the privacy sanitizer."""
+    import json
+
+    from ..privacy import sanitize_mapping
+
+    data = {k: v for k, v in result.items() if k != "text"}
+    data = json.loads(json.dumps(data, default=lambda o: getattr(o, "__dict__", str(o))))
+    return json.dumps(sanitize_mapping(data), indent=2, sort_keys=True, default=str)

@@ -490,7 +490,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Do:** The recorder tracks `last_session_hash` (updated in every hook that has a `session_id`). Store it in `extra` for persisted rows, so a fresh CLI process can take the session hash of the newest persisted event. `wtf` defaults to `--session current`, which resolves to that hash. `--session all` keeps today's behaviour. The rendered header shows `scope: current session (abc123…)` or `scope: all sessions`.
   - **Accept:** A test with two interleaved sessions, where the looping one is older and the newest is quiet, shows the quiet one by default and the loop with `--session all`.
 
-- [ ] **T3.6 Machine-readable output**
+- [x] **T3.6 Machine-readable output**
   - **Do:** Add a global `--json` flag to every `hermes minefield` subcommand. It prints `json.dumps(result_without_text, indent=2, sort_keys=True, default=str)`, run through `privacy.sanitize_mapping`. In `render_incident`, remove the duplicated human lines (`Actual executions:`, `Preparations:`, `Repeated equivalent calls:`), which repeat the `KEY=VALUE` block.
   - **Accept:** `hermes minefield wtf --json | python -m json.tool` succeeds. There's a test for each command's JSON shape.
 

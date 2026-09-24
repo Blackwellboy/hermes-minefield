@@ -156,7 +156,12 @@ def slash_result(raw_args: str) -> dict[str, Any]:
         if msg.startswith("usage:"):
             return {"ok": True, "text": msg}
         return {"ok": False, "text": f"minefield: {msg}\n\n{USAGE}"}
-    return run_command(args, surface="slash")
+    result = run_command(args, surface="slash")
+    if getattr(args, "json", False):
+        from .cli import to_json
+
+        return {**result, "text": to_json(result)}
+    return result
 
 
 def handle_slash(raw_args: str) -> str:
