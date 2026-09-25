@@ -23,8 +23,9 @@ Minefield stays framework-neutral. This plugin is the Hermes-specific adapter.
 ## Install (opt-in)
 
 ```bash
-# 1) Ensure Minefield Phase 0 library is importable
-pip install -e /path/to/model-serving-minefield   # main @ a4369c61+
+# 1) Ensure the supported Minefield 0.2 API is importable
+# (the plugin package pins model-serving-minefield>=0.2,<0.3)
+pip install -e /path/to/model-serving-minefield
 
 # 2) Link this plugin into Hermes
 ln -sfn /path/to/hermes-minefield ~/.hermes/plugins/hermes-minefield
@@ -54,7 +55,7 @@ pip install -e .
 ## Architecture
 
 ```
-model-serving-minefield  (plan_checks / run_checks / summarize)
+model-serving-minefield 0.2.x  (plan_checks / run_checks / summarize / match_symptom)
             ↑
    hermes-minefield plugin  (commands, recorder, incidents, issues)
             ↑

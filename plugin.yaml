@@ -1,11 +1,12 @@
 name: hermes-minefield
-version: 0.1.0
+version: 0.2.0
+manifest_version: 1
 description: >-
   Model Serving Minefield integration for Hermes: Lite check, full Doctor,
   flight recorder, /minefield wtf incident analysis, and review-gated
   contribution/issue workflows. Opt-in. Never auto-uploads.
 author: Blackwellboy
-hooks:
+provides_hooks:
   - pre_tool_call
   - post_tool_call
   - pre_llm_call

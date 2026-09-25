@@ -8,7 +8,7 @@ from typing import Optional, Sequence
 from ..recorder.events import RecorderEvent
 from .classify import ClassificationResult, classify, compute_signals
 from .store import save_incident
-from .trap_match import match_traps
+from .trap_match import TrapMatchError, match_traps
 from .types import IncidentArtifact
 
 
@@ -25,11 +25,18 @@ def analyze_events(
     result: ClassificationResult = classify(signals)
     tool = signals.dominant_tool or "tool"
 
-    trap_matches = match_traps(
-        classification=result.classification,
-        symptom=result.observed_symptom,
-        serving_failure=result.serving_failure,
-    )
+    trap_match_error = None
+    try:
+        trap_matches = match_traps(
+            classification=result.classification,
+            symptom=result.observed_symptom,
+            serving_failure=result.serving_failure,
+        )
+    except TrapMatchError as exc:
+        # Preserve the incident, but never let a broken integration contract
+        # masquerade as "no Minefield trap matched".
+        trap_matches = []
+        trap_match_error = str(exc)
 
     status = "OBSERVED"
     if result.is_engineering_bug and not result.is_minefield_trap:
@@ -80,6 +87,7 @@ def analyze_events(
         notes=[
             "NOT_EVERY_BUG_IS_A_MINEFIELD_TRAP",
             f"api_errors={signals.total_api_errors}",
+            *([f"trap_match_error={trap_match_error}"] if trap_match_error else []),
         ],
     )
     if persist:

@@ -10,6 +10,7 @@ def test_import_minefield_api():
         result_to_doctor_json,
         run_checks,
         summarize,
+        match_symptom,
     )
 
     assert callable(plan_checks)
@@ -17,6 +18,7 @@ def test_import_minefield_api():
     assert callable(summarize)
     assert callable(detect_target)
     assert callable(result_to_doctor_json)
+    assert callable(match_symptom)
 
 
 def test_plan_lite_respects_budget_zero_requests():
