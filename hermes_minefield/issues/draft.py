@@ -16,10 +16,10 @@ from ..paths import atomic_write_text, drafts_dir
 from .sanitize import sanitize_issue_body, sanitize_packet
 
 
-@dataclass
 MINEFIELD_REPO = "Blackwellboy/model-serving-minefield"
 
 
+@dataclass
 class IssueDraft:
     title: str
     summary: str
