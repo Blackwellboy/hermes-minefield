@@ -6,6 +6,7 @@ from pathlib import Path
 
 import yaml
 
+from hermes_minefield.commands.wtf import _stack_hint
 from hermes_minefield.incident import analyze as analyze_mod
 from hermes_minefield.incident.trap_match import TrapMatchError, match_traps
 from hermes_minefield.privacy import arg_fingerprint
@@ -47,6 +48,81 @@ def test_non_serving_agent_loop_is_not_inflated_into_minefield_trap():
         serving_failure=False,
     )
     assert hits == []
+
+
+
+
+def test_matcher_forwards_stack_and_model_without_persisting_them(monkeypatch):
+    import minefield.api as minefield_api
+
+    seen = {}
+
+    def fake_match(symptom, **kwargs):
+        seen["symptom"] = symptom
+        seen.update(kwargs)
+        return {"matches": []}
+
+    monkeypatch.setattr(minefield_api, "match_symptom", fake_match)
+    hits = match_traps(
+        classification="MODEL_SERVER_BUG",
+        symptom="streamed content is empty",
+        serving_failure=True,
+        stack="vllm",
+        model="example/model",
+        limit=3,
+    )
+    assert hits == []
+    assert seen["stack"] == "vllm"
+    assert seen["model"] == "example/model"
+    assert seen["limit"] == 3
+
+
+def test_analyzer_forwards_transient_context_and_renders_confirmation(monkeypatch):
+    seen = {}
+
+    def fake_matcher(**kwargs):
+        seen.update(kwargs)
+        return [
+            {
+                "trap_id": "23",
+                "title": "streaming answer lands in reasoning channel",
+                "match": "POSSIBLE_RELATED_TRAP",
+                "confirmation_check": "Compare streamed content and reasoning deltas.",
+            }
+        ]
+
+    monkeypatch.setattr(analyze_mod, "match_traps", fake_matcher)
+    events = [
+        RecorderEvent(type=API_ERROR),
+        RecorderEvent(type=API_ERROR),
+        RecorderEvent(type=API_ERROR),
+    ]
+    artifact = analyze_mod.analyze_events(
+        events,
+        stack_hint="vllm",
+        model_hint="example/model",
+        persist=False,
+    )
+
+    assert seen["stack"] == "vllm"
+    assert seen["model"] == "example/model"
+    # Raw hints are transient and are not fields in the persisted incident.
+    payload = artifact.to_dict()
+    assert "stack_hint" not in payload
+    assert "model_hint" not in payload
+
+    rendered = analyze_mod.render_incident(artifact)
+    assert "Top-match confirmation check:" in rendered
+    assert "Compare streamed content and reasoning deltas." in rendered
+
+
+def test_only_recognized_serving_providers_become_stack_hints():
+    assert _stack_hint("vllm") == "vllm"
+    assert _stack_hint("SGLang") == "sglang"
+    assert _stack_hint("llamacpp") == "llama.cpp"
+    assert _stack_hint("openai") is None
+    assert _stack_hint("custom") is None
+    assert _stack_hint(None) is None
 
 
 def test_current_hermes_args_payload_is_fingerprinted(fresh_recorder):
