@@ -18,16 +18,18 @@ jobs:
 
     steps:
       - name: Check out hermes-minefield
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Check out Model Serving Minefield
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: Blackwellboy/model-serving-minefield
+          ref: main
           path: _deps/model-serving-minefield
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -38,8 +40,27 @@ jobs:
           python -m pip install pytest PyYAML
           python -m pip install -e . --no-deps
 
+      - name: Assert Minefield integration version
+        run: |
+          python -c 'from importlib.metadata import version; v=version("model-serving-minefield"); print(v); assert v.startswith("0.2."), v'
+          python -c 'from minefield.api import match_symptom; assert callable(match_symptom)'
+
       - name: Compile
         run: python -m compileall -q hermes_minefield tests
 
       - name: Test
         run: pytest -q
+
+  hermes-admission:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out hermes-minefield
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Validate against pinned current Hermes
+        uses: NousResearch/hermes-agent/.github/actions/plugin-validate@99a161531cc7b6ce8d91869666ea19cee0610156
+        with:
+          path: .
+          hermes-ref: 99a161531cc7b6ce8d91869666ea19cee0610156
