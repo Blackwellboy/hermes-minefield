@@ -92,6 +92,73 @@ def test_draft_redacts_secrets(tmp_hermes_home):
     assert "10.0.0.5" not in body or "[REDACTED" in body
 
 
+
+
+def test_minefield_draft_matches_public_issue_form_shape(tmp_hermes_home):
+    art = {
+        "incident_id": "INC-TEST-FORM",
+        "classification": "MODEL_SERVER_BUG",
+        "observed_symptom": "streamed answer is blank",
+        "likely_root_cause": "possible response-channel mismatch",
+        "actual_execution_counts": {"total_executed": 3},
+        "repeated_call_counts": {},
+        "severity": "MEDIUM",
+        "confidence": "MEDIUM",
+        "recommended_action": "run the trap-specific paired control",
+        "serving_failure": True,
+        "known_trap_matches": [
+            {
+                "trap_id": "23",
+                "title": "streaming answer lands in reasoning channel",
+                "confirmation_check": "Compare streamed content and reasoning deltas.",
+            }
+        ],
+    }
+    draft = build_issue_draft(
+        artifact=art,
+        target_repo="Blackwellboy/model-serving-minefield",
+        environment={"model": "example/model", "provider": "vllm"},
+    )
+    body = draft.body
+
+    # These are the field labels used by the public Minefield trap form.
+    for heading in (
+        "### What broke",
+        "### What you saw",
+        "### What fixed it",
+        "### What were you serving",
+        "### Optional diagnostic evidence",
+    ):
+        assert heading in body
+
+    assert '"trap_id": "23"' in body
+    assert "Compare streamed content and reasoning deltas." in body
+    assert '"model": "example/model"' in body
+    assert '"provider": "vllm"' in body
+
+
+def test_non_minefield_target_keeps_generic_bug_draft_shape(tmp_hermes_home):
+    art = {
+        "incident_id": "INC-TEST-GENERIC",
+        "classification": "AGENT_TOOL_LOOP",
+        "observed_symptom": "loop",
+        "likely_root_cause": "loop",
+        "actual_execution_counts": {},
+        "repeated_call_counts": {},
+        "severity": "HIGH",
+        "confidence": "HIGH",
+        "recommended_action": "break loop",
+    }
+    draft = build_issue_draft(
+        artifact=art,
+        target_repo="NousResearch/hermes-agent",
+        environment={"provider": "openai"},
+    )
+    assert "## Summary" in draft.body
+    assert "## Minimal repro" in draft.body
+    assert "### What broke" not in draft.body
+
+
 def test_closed_not_assumed_fixed():
     from hermes_minefield.issues.dedupe import map_github_state
 
