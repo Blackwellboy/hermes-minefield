@@ -1,19 +1,16 @@
 """Directory-plugin entry for ~/.hermes/plugins/hermes-minefield/.
 
-Hermes loads this file as a package under ``hermes_plugins.<slug>``.
-We also support bare imports during local tests by putting this directory
-on ``sys.path`` so ``hermes_minefield`` resolves as a top-level package.
+Hermes imports this directory as a package (``hermes_plugins.<slug>``), so the
+real code is reached with a relative import. Tooling that imports this file
+standalone (e.g. pytest's rootdir handling) falls back to the installed
+``hermes_minefield`` package. The plugin never modifies ``sys.path``.
 """
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-_ROOT = Path(__file__).resolve().parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
-
-from hermes_minefield.plugin import register  # noqa: E402
+if __package__:
+    from .hermes_minefield.plugin import register
+else:  # pragma: no cover - standalone import, not the Hermes loader path
+    from hermes_minefield.plugin import register
 
 __all__ = ["register"]

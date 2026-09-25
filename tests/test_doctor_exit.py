@@ -12,7 +12,7 @@ def test_doctor_blocked_returns_2(tmp_hermes_home, monkeypatch):
 
     monkeypatch.setattr(
         "hermes_minefield.commands.doctor.probe_concurrency",
-        lambda url: ConcurrencyInfo(1, True, "props.total_slots", "total_slots=1"),
+        lambda url, **kw: ConcurrencyInfo(1, True, "props.total_slots", "total_slots=1"),
     )
     (tmp_hermes_home / "config.yaml").write_text(
         "model:\n  default: t\n  base_url: http://127.0.0.1:9/v1\n",
@@ -36,7 +36,7 @@ def test_doctor_success_path_returns_0_when_yes(tmp_hermes_home, monkeypatch):
 
     monkeypatch.setattr(
         "hermes_minefield.commands.doctor.probe_concurrency",
-        lambda url: ConcurrencyInfo(1, True, "props.total_slots", "total_slots=1"),
+        lambda url, **kw: ConcurrencyInfo(1, True, "props.total_slots", "total_slots=1"),
     )
 
     class _Plan:

@@ -1,11 +1,11 @@
-""" /minefield status """
+"""/minefield status"""
 
 from __future__ import annotations
 
 import time
-from typing import Any, Optional
+from typing import Any
 
-from ..cache import get_entry, load_cache
+from ..cache import get_entry, is_fresh, load_cache
 from ..config import load_plugin_config
 from ..fingerprint import fingerprint_for_hermes_target
 from ..recorder.store import get_recorder
@@ -13,11 +13,12 @@ from ..render import extract_summary_counts, render_status
 from ..target import resolve_target
 
 
-def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -> dict[str, Any]:
+def run_status(*, base_url: str | None = None, model: str | None = None) -> dict[str, Any]:
     cfg = load_plugin_config()
     fp_short = None
     cache_age = None
     last_summary = None
+    last_verdict = None
     try:
         target = resolve_target(base_url=base_url, model=model)
         # Must match check()'s Lite-cache key (includes reasoning_mode=from_config).
@@ -26,7 +27,8 @@ def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -
         entry = get_entry(fp.key)
         if entry:
             age_s = time.time() - entry.checked_at
-            cache_age = f"{age_s/60:.1f}m ago ({entry.mode})"
+            stale = not is_fresh(entry, ttl_days=cfg.fingerprint_cache_ttl_days)
+            cache_age = f"{age_s / 60:.1f}m ago ({entry.mode}{', STALE' if stale else ''})"
             _, clean, problem, inconclusive = extract_summary_counts(entry.summary)
             # Prefer repaired counts from findings when legacy cache stored zeros.
             if (entry.clean, entry.problem, entry.inconclusive) == (0, 0, 0) and (
@@ -37,9 +39,13 @@ def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -
                 c, p, i = clean, problem, inconclusive
             else:
                 c, p, i = entry.clean, entry.problem, entry.inconclusive
+            from .check import cached_verdict
+
+            # A stale result is no longer evidence about the target.
+            last_verdict = "UNKNOWN (stale)" if stale else cached_verdict(entry.summary)
             last_summary = (
-                f"  clean={c} problem={p} "
-                f"inconclusive={i} requests={entry.requests_executed}"
+                f"  verdict={last_verdict} clean={c} problem={p} inconclusive={i} "
+                f"requests={entry.requests_executed}"
             )
     except Exception as e:
         cache_age = f"target unresolved: {type(e).__name__}"
@@ -75,5 +81,11 @@ def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -
         last_summary=last_summary,
         auto_lite=cfg.auto_lite,
     )
-    n_cache = len((load_cache().get("entries") or {}))
-    return {"ok": True, "text": text, "cache_entries": n_cache, "recorder": stats.__dict__}
+    n_cache = len(load_cache().get("entries") or {})
+    return {
+        "ok": True,
+        "last_verdict": last_verdict,
+        "text": text,
+        "cache_entries": n_cache,
+        "recorder": stats.__dict__,
+    }

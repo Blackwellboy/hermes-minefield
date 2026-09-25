@@ -6,11 +6,11 @@ from __future__ import annotations
 def test_import_minefield_api():
     from minefield.api import (
         detect_target,
+        match_symptom,
         plan_checks,
         result_to_doctor_json,
         run_checks,
         summarize,
-        match_symptom,
     )
 
     assert callable(plan_checks)
@@ -33,7 +33,7 @@ def test_plan_lite_respects_budget_zero_requests():
     assert plan.expected_requests <= 3
     assert plan.fits_budget is True
     # planning itself issues zero chat completions (no network in detect=False)
-    assert "plan_without_detect" in plan.target.notes or plan.expected_requests >= 0
+    assert "plan_without_detect" in plan.target.notes
 
 
 def test_plan_lite_max5():

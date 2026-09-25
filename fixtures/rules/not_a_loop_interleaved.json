@@ -1,0 +1,29 @@
+{
+  "about": "same read 6x but interleaved with other tools: streak 1",
+  "expected": {
+    "rule": "aligned"
+  },
+  "events": [
+    {
+      "repeat": 6,
+      "each": [
+        {
+          "type": "tool.executed",
+          "tool_name": "read_file",
+          "tool_arg_fingerprint": "a",
+          "result_fingerprint": "r",
+          "session_id_hash": "s",
+          "success": true
+        },
+        {
+          "type": "tool.executed",
+          "tool_name": "write_file",
+          "tool_arg_fingerprint": "w{i}",
+          "result_fingerprint": "ok{i}",
+          "session_id_hash": "s",
+          "success": true
+        }
+      ]
+    }
+  ]
+}

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
-from typing import Any, Optional
-
+from dataclasses import dataclass, field, fields
+from typing import Any
 
 # Tool lifecycle — prepare ≠ execute
 TOOL_PREPARED = "tool.prepared"
@@ -17,6 +16,7 @@ TOOL_FAILED = "tool.failed"
 
 TURN_START = "turn.start"
 TURN_END = "turn.end"
+TURN_FINISHED = "turn.finished"  # on_session_end: fires after every turn
 API_REQUEST = "api.request"
 API_RESPONSE = "api.response"
 API_ERROR = "api.error"
@@ -37,6 +37,7 @@ _KNOWN_TYPES = frozenset(
         TOOL_FAILED,
         TURN_START,
         TURN_END,
+        TURN_FINISHED,
         API_REQUEST,
         API_RESPONSE,
         API_ERROR,
@@ -56,26 +57,34 @@ class RecorderEvent:
     type: str
     ts: float = field(default_factory=lambda: time.time())
     event_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
-    session_id_hash: Optional[str] = None
-    request_id_hash: Optional[str] = None
-    tool_name: Optional[str] = None
-    tool_arg_fingerprint: Optional[str] = None
-    success: Optional[bool] = None
-    result_bytes: Optional[int] = None
-    finish_reason: Optional[str] = None
-    content_len: Optional[int] = None
-    reasoning_len: Optional[int] = None
-    wall_ms: Optional[float] = None
-    ttft_ms: Optional[float] = None
-    http_status: Optional[int] = None
-    error_class: Optional[str] = None
-    model_hash: Optional[str] = None
+    session_id_hash: str | None = None
+    request_id_hash: str | None = None
+    tool_name: str | None = None
+    tool_arg_fingerprint: str | None = None
+    # Hash of the tool result: same args + same result = no progress (loop evidence).
+    result_fingerprint: str | None = None
+    success: bool | None = None
+    result_bytes: int | None = None
+    finish_reason: str | None = None
+    content_len: int | None = None
+    reasoning_len: int | None = None
+    wall_ms: float | None = None
+    ttft_ms: float | None = None
+    http_status: int | None = None
+    error_class: str | None = None
+    model_hash: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        d = asdict(self)
-        # Drop Nones for compact storage
-        return {k: v for k, v in d.items() if v is not None and v != {}}
+        # Hot path (every hook): shallow field walk instead of dataclasses.asdict's deep copy.
+        # Drop Nones / empty extra for compact storage.
+        out: dict[str, Any] = {}
+        for name in _FIELD_NAMES:
+            v = getattr(self, name)
+            if v is None or (name == "extra" and not v):
+                continue
+            out[name] = dict(v) if name == "extra" else v
+        return out
 
     def identity(self) -> str:
         """Stable dedupe key — prefer event_id; else metadata fingerprint (no private content)."""
@@ -98,7 +107,7 @@ class RecorderEvent:
         return "meta:" + stable_hash("|".join(parts), n=16)
 
     @classmethod
-    def from_dict(cls, raw: Any, *, now: Optional[float] = None) -> Optional["RecorderEvent"]:
+    def from_dict(cls, raw: Any, *, now: float | None = None) -> RecorderEvent | None:
         """Parse one persisted row. Return None if schema-invalid / unsafe timestamp."""
         if not isinstance(raw, dict):
             return None
@@ -124,14 +133,14 @@ class RecorderEvent:
         if ts <= 0 or ts > now + 300:
             return None
 
-        def _opt_str(key: str) -> Optional[str]:
+        def _opt_str(key: str) -> str | None:
             v = raw.get(key)
             if v is None:
                 return None
             s = str(v)
             return s if s else None
 
-        def _opt_int(key: str) -> Optional[int]:
+        def _opt_int(key: str) -> int | None:
             v = raw.get(key)
             if v is None:
                 return None
@@ -140,7 +149,7 @@ class RecorderEvent:
             except (TypeError, ValueError):
                 return None
 
-        def _opt_float(key: str) -> Optional[float]:
+        def _opt_float(key: str) -> float | None:
             v = raw.get(key)
             if v is None:
                 return None
@@ -149,7 +158,7 @@ class RecorderEvent:
             except (TypeError, ValueError):
                 return None
 
-        def _opt_bool(key: str) -> Optional[bool]:
+        def _opt_bool(key: str) -> bool | None:
             v = raw.get(key)
             if v is None:
                 return None
@@ -170,6 +179,7 @@ class RecorderEvent:
             request_id_hash=_opt_str("request_id_hash"),
             tool_name=_opt_str("tool_name"),
             tool_arg_fingerprint=_opt_str("tool_arg_fingerprint"),
+            result_fingerprint=_opt_str("result_fingerprint"),
             success=_opt_bool("success"),
             result_bytes=_opt_int("result_bytes"),
             finish_reason=_opt_str("finish_reason"),
@@ -182,3 +192,6 @@ class RecorderEvent:
             model_hash=_opt_str("model_hash"),
             extra=extra,
         )
+
+
+_FIELD_NAMES: tuple[str, ...] = tuple(f.name for f in fields(RecorderEvent))

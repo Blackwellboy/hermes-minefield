@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 _SECRET_PATTERNS = [
@@ -19,9 +20,7 @@ _SECRET_PATTERNS = [
     re.compile(r"(?i)\b(bsb|account[_-]?number|card[_-]?number)\s*[:=]\s*([0-9\-\s]{4,})"),
 ]
 _ABS_HOME = re.compile(r"(?i)(/home/|/Users/|C:\\Users\\)[^\s\"']+")
-_IP_LIKE = re.compile(
-    r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b"
-)
+_IP_LIKE = re.compile(r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b")
 
 
 def stable_hash(value: Any, *, n: int = 12) -> str:
@@ -65,7 +64,7 @@ def redact_text(text: str, *, keep_ips: bool = False) -> str:
     return out
 
 
-def sanitize_mapping(data: Mapping[str, Any], *, drop_keys: Optional[set[str]] = None) -> dict[str, Any]:
+def sanitize_mapping(data: Mapping[str, Any], *, drop_keys: set[str] | None = None) -> dict[str, Any]:
     drop = {k.lower() for k in (drop_keys or set())} | {
         "authorization",
         "api_key",

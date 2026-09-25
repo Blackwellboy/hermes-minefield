@@ -5,8 +5,7 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from typing import Any, Optional
-
+from typing import Any
 
 # Classification taxonomy — engineering bugs ≠ Minefield traps
 EXPECTED_BEHAVIOUR = "EXPECTED_BEHAVIOUR"
@@ -47,9 +46,9 @@ STATUS_CLOSED = "CLOSED"
 class IncidentArtifact:
     incident_id: str
     timestamp: float
-    session_id_hash: Optional[str]
-    model_fingerprint: Optional[str]
-    runtime_fingerprint: Optional[str]
+    session_id_hash: str | None
+    model_fingerprint: str | None
+    runtime_fingerprint: str | None
     event_window: dict[str, Any]
     observed_symptom: str
     actual_execution_counts: dict[str, Any]

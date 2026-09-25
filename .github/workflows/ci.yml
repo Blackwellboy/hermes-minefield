@@ -8,28 +8,46 @@ on:
 permissions:
   contents: read
 
+env:
+  # Bump deliberately (and update docs/IMPROVEMENT_PLAN.md §2 / T0.5 in the same PR).
+  MINEFIELD_REF: 12822f3ec6d8600df113e773d2e588f3659f0120  # 0.2.0 (match_symptom API)
+
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install ruff
+      - run: ruff check hermes_minefield tests
+      - run: ruff format --check hermes_minefield tests
+
   test:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
-
+        # Hermes itself requires Python >=3.11,<3.14; the plugin runs in its interpreter.
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - name: Check out hermes-minefield
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-
-      - name: Check out Model Serving Minefield
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          repository: Blackwellboy/model-serving-minefield
-          ref: main
-          path: _deps/model-serving-minefield
           persist-credentials: false
 
-      - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - name: Check out Model Serving Minefield (pinned)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          repository: Blackwellboy/model-serving-minefield
+          ref: ${{ env.MINEFIELD_REF }}
+          path: _deps/model-serving-minefield
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -48,10 +66,90 @@ jobs:
       - name: Compile
         run: python -m compileall -q hermes_minefield tests
 
-      - name: Test
+      - name: Unit tests (Hermes-dependent tests skip here; see hermes-compat)
         run: pytest -q
 
+  hermes-compat:
+    # Proves the requires_hermes range in plugin.yaml. Every blocking entry must pass.
+    name: hermes-compat (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: "min v2026.8.31 / 0.21.0"
+            ref: 29112bef099274229cadff79cdff7bf7b99c4b77
+            python: "3.11"
+            experimental: false
+          - label: "pinned d350422b / 0.21.5"
+            ref: d350422b15863fc4c0b7962b122b625a0271516c
+            python: "3.11"
+            experimental: false
+          - label: "latest v2026.9.24 / 0.21.5"
+            ref: f97608f178d1ffeca59860195ab7da295f7c8e5f
+            python: "3.11"
+            experimental: false
+          - label: "main (early warning)"
+            ref: main
+            # Since 2026-09-24 Hermes main declares its pip dependencies only for
+            # Python >= 3.14 (older interpreters get them from its own locked
+            # toolchain), so an editable pip install needs 3.14 here.
+            python: "3.14"
+            experimental: true
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Check out Model Serving Minefield (pinned)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          repository: Blackwellboy/model-serving-minefield
+          ref: ${{ env.MINEFIELD_REF }}
+          path: _deps/model-serving-minefield
+
+      - name: Check out Hermes Agent
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+          repository: NousResearch/hermes-agent
+          ref: ${{ matrix.ref }}
+          path: _deps/hermes-agent
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python }}
+
+      # Hermes blocks wheel builds outside Nix, so `pip install git+...` (and the
+      # upstream plugin-validate action that uses it) fails. Editable install works.
+      - name: Install Hermes + deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./_deps/hermes-agent
+          python -m pip install -e ./_deps/model-serving-minefield
+          python -m pip install pytest PyYAML
+          python -m pip install -e . --no-deps
+          hermes --version | head -1
+
+      - name: hermes plugins validate (when this Hermes has it)
+        run: |
+          if hermes plugins validate --help >/dev/null 2>&1; then
+            ./scripts/validate_plugin.sh
+          else
+            echo "::notice::this Hermes version has no 'plugins validate'; contract + load tests still run"
+          fi
+
+      - name: Hook contract + real-loader tests
+        run: pytest -q tests/test_hermes_contract.py tests/e2e
+
+      - name: Gate A scenario suite (separate Hermes + CLI processes)
+        run: pytest -q -m gate_a tests/e2e
+
   hermes-admission:
+    # Hermes's own plugin-validate action (fixed upstream to build Hermes in an
+    # isolated locked toolchain), at a pinned current Hermes commit.
     runs-on: ubuntu-latest
     steps:
       - name: Check out hermes-minefield

@@ -50,8 +50,6 @@ def test_non_serving_agent_loop_is_not_inflated_into_minefield_trap():
     assert hits == []
 
 
-
-
 def test_matcher_forwards_stack_and_model_without_persisting_them(monkeypatch):
     import minefield.api as minefield_api
 
@@ -116,10 +114,9 @@ def test_analyzer_forwards_transient_context_and_renders_confirmation(monkeypatc
     assert "Compare streamed content and reasoning deltas." in rendered
 
 
-
-
 def test_run_wtf_passes_resolved_context_only_to_analyzer(monkeypatch, fresh_recorder):
     from types import SimpleNamespace
+
     from hermes_minefield.commands import wtf as wtf_mod
 
     seen = {}
@@ -127,7 +124,7 @@ def test_run_wtf_passes_resolved_context_only_to_analyzer(monkeypatch, fresh_rec
 
     monkeypatch.setattr(
         wtf_mod,
-        "resolve_target",
+        "local_target_hints",
         lambda: SimpleNamespace(model="example/model", provider="vllm"),
     )
 
@@ -162,21 +159,23 @@ def test_current_hermes_args_payload_is_fingerprinted(fresh_recorder):
     hooks.on_post_tool_call(tool_name="read_file", args={"path": "B.txt"}, result="ok")
 
     events = fresh_recorder.freeze(since_seconds=60)
-    prepared = [e for e in events if e.type == "tool.prepared"]
+    # pre_tool_call is the dispatch point: it emits tool.requested (plan T3.1).
+    # tool.prepared now comes from the model's emitted tool calls.
+    requested = [e for e in events if e.type == "tool.requested"]
     executed = [e for e in events if e.type == "tool.executed"]
 
     expected_a = arg_fingerprint({"path": "A.txt"})
     expected_b = arg_fingerprint({"path": "B.txt"})
     assert expected_a != expected_b
-    assert [e.tool_arg_fingerprint for e in prepared] == [expected_a, expected_b]
+    assert [e.tool_arg_fingerprint for e in requested] == [expected_a, expected_b]
     assert [e.tool_arg_fingerprint for e in executed] == [expected_a, expected_b]
 
 
 def test_legacy_params_keyword_still_fingerprints(fresh_recorder):
     hooks.on_pre_tool_call(tool_name="read_file", params={"path": "legacy.txt"})
     events = fresh_recorder.freeze(since_seconds=60)
-    prepared = [e for e in events if e.type == "tool.prepared"]
-    assert prepared[0].tool_arg_fingerprint == arg_fingerprint({"path": "legacy.txt"})
+    requested = [e for e in events if e.type == "tool.requested"]
+    assert requested[0].tool_arg_fingerprint == arg_fingerprint({"path": "legacy.txt"})
 
 
 def test_matcher_failure_is_visible_not_silent(monkeypatch):
@@ -193,10 +192,7 @@ def test_matcher_failure_is_visible_not_silent(monkeypatch):
 
     assert artifact.serving_failure is True
     assert artifact.known_trap_matches == []
-    assert any(
-        note.startswith("trap_match_error=contract unavailable")
-        for note in artifact.notes
-    )
+    assert any(note.startswith("trap_match_error=contract unavailable") for note in artifact.notes)
 
 
 def test_manifest_uses_canonical_provides_hooks():
@@ -215,4 +211,54 @@ def test_manifest_uses_canonical_provides_hooks():
         "on_session_start",
         "on_session_end",
         "on_session_finalize",
+        # Registered only where Hermes has it (>= 0.21.3; see plugin._hook_supported).
+        "agent_loop_stopped",
     }
+
+
+def test_matcher_failure_renders_unknown_and_stores_no_error_text(monkeypatch):
+    """Missing evidence is not negative evidence, and error messages are never stored."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def no_match_symptom(name, *args, **kwargs):
+        if name == "minefield.api" and "match_symptom" in (args[2] if len(args) > 2 else ()):
+            raise ImportError("cannot import name 'match_symptom' from /home/secret/site-packages")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", no_match_symptom)
+    events = [RecorderEvent(type=API_ERROR) for _ in range(3)]
+    artifact = analyze_mod.analyze_events(events, persist=False)
+
+    notes = [n for n in artifact.notes if n.startswith("trap_match_error=")]
+    assert notes == ["trap_match_error=minefield.api.match_symptom unavailable: ImportError"]
+    assert "/home/secret" not in repr(artifact.to_dict())
+    rendered = analyze_mod.render_incident(artifact, saved=False)
+    assert "UNKNOWN (Minefield trap matching unavailable)" in rendered
+
+
+def test_wtf_hints_never_use_hermes_runtime_resolution(monkeypatch, fresh_recorder):
+    """Hermes's runtime resolution can hit the network; wtf must stay offline."""
+    from hermes_minefield import target as target_mod
+    from hermes_minefield.commands import wtf as wtf_mod
+
+    def boom(*_a, **_k):
+        raise AssertionError("wtf must not call Hermes runtime provider resolution")
+
+    monkeypatch.setattr(target_mod, "_hermes_runtime", boom)
+    cfg = {"model": {"provider": "vllm", "default": "example/model"}}
+    monkeypatch.setattr(target_mod, "load_hermes_config", lambda: cfg)
+    seen = {}
+    original_analyze = wtf_mod.analyze_events
+
+    def capture(events, **kwargs):
+        seen.update(kwargs)
+        return original_analyze(events, **kwargs)
+
+    monkeypatch.setattr(wtf_mod, "analyze_events", capture)
+    result = wtf_mod.run_wtf(window="60s", persist=False)
+    assert result["ok"] is True
+    # No base_url configured: hints still resolve from config alone.
+    assert seen["stack_hint"] == "vllm"
+    assert seen["model_hint"] == "example/model"

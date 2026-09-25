@@ -1,0 +1,27 @@
+{
+  "about": ">=5 failures of one tool, >=50% of its executions",
+  "expected": {
+    "classification": "TOOL_BUG",
+    "rule": "failure_storm"
+  },
+  "events": [
+    {
+      "repeat": 5,
+      "each": [
+        {
+          "type": "tool.executed",
+          "tool_name": "terminal",
+          "tool_arg_fingerprint": "c{i}",
+          "result_fingerprint": "e{i}",
+          "session_id_hash": "s",
+          "success": false
+        },
+        {
+          "type": "tool.failed",
+          "tool_name": "terminal",
+          "error_class": "tool_error"
+        }
+      ]
+    }
+  ]
+}

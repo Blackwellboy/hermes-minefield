@@ -20,6 +20,7 @@ _NON_SERVING_CLASSIFICATIONS = {
     "AGENT_LOOP",
     "EXPECTED_BEHAVIOUR",
     "HERMES_ORCHESTRATION_BUG",
+    "TOOL_BUG",
 }
 
 
@@ -45,7 +46,7 @@ def match_traps(
     try:
         from minefield.api import match_symptom
     except Exception as exc:  # pragma: no cover - exercised through caller guard
-        raise TrapMatchError(f"minefield.api.match_symptom unavailable: {exc}") from exc
+        raise TrapMatchError(f"minefield.api.match_symptom unavailable: {type(exc).__name__}") from exc
 
     try:
         result = match_symptom(
@@ -55,7 +56,7 @@ def match_traps(
             limit=max(1, int(limit)),
         )
     except Exception as exc:
-        raise TrapMatchError(f"minefield symptom matching failed: {exc}") from exc
+        raise TrapMatchError(f"minefield symptom matching failed: {type(exc).__name__}") from exc
 
     if not isinstance(result, dict):
         raise TrapMatchError("minefield symptom matching returned a non-mapping result")

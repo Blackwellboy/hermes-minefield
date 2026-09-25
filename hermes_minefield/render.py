@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 
 def _mark(level: str) -> str:
@@ -63,22 +64,17 @@ def extract_summary_counts(summary: Any) -> tuple[list[Any], int, int, int]:
             inconclusive = int(summary.get("inconclusive") or 0)
     else:
         if hasattr(summary, "clean_count"):
-            clean = int(getattr(summary, "clean_count") or 0)
-            problem = int(getattr(summary, "problem_count") or 0)
-            inconclusive = int(getattr(summary, "inconclusive_count") or 0)
+            clean = int(summary.clean_count or 0)
+            problem = int(summary.problem_count or 0)
+            inconclusive = int(summary.inconclusive_count or 0)
         elif hasattr(summary, "clean"):
-            clean = int(getattr(summary, "clean") or 0)
-            problem = int(getattr(summary, "problem") or 0)
-            inconclusive = int(getattr(summary, "inconclusive") or 0)
+            clean = int(summary.clean or 0)
+            problem = int(summary.problem or 0)
+            inconclusive = int(summary.inconclusive or 0)
 
     derived = counts_from_findings(findings)
-    if clean is None or (
-        findings
-        and (clean, problem, inconclusive) == (0, 0, 0)
-        and derived != (0, 0, 0)
-    ):
+    if clean is None or (findings and (clean, problem, inconclusive) == (0, 0, 0) and derived != (0, 0, 0)):
         clean, problem, inconclusive = derived
-    assert clean is not None and problem is not None and inconclusive is not None
     return findings, clean, problem, inconclusive
 
 
@@ -86,7 +82,7 @@ def render_lite_summary(
     summary: Any,
     *,
     requests: int,
-    fingerprint_short: Optional[str] = None,
+    fingerprint_short: str | None = None,
 ) -> str:
     findings, clean, problem, inconclusive = extract_summary_counts(summary)
 
@@ -128,10 +124,10 @@ def render_doctor_summary(summary: Any, *, requests: int) -> str:
 
 def render_status(
     *,
-    fingerprint_short: Optional[str],
-    cache_age: Optional[str],
+    fingerprint_short: str | None,
+    cache_age: str | None,
     recorder_stats: Mapping[str, Any],
-    last_summary: Optional[str] = None,
+    last_summary: str | None = None,
     auto_lite: str = "false",
     fingerprint_kind: str = "lite-cache (config-resolved)",
 ) -> str:
