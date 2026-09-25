@@ -34,12 +34,28 @@ def _kw(kwargs: dict) -> dict:
     return kwargs or {}
 
 
-def on_pre_tool_call(tool_name: str = "", params: Any = None, **kwargs) -> None:
+def _tool_args(args: Any, params: Any, kwargs: dict) -> Any:
+    """Resolve current Hermes `args` first, with legacy `params` compatibility."""
+    if args is not None:
+        return args
+    if params is not None:
+        return params
+    if "args" in kwargs:
+        return kwargs.get("args")
+    return kwargs.get("params")
+
+
+def on_pre_tool_call(
+    tool_name: str = "",
+    args: Any = None,
+    params: Any = None,
+    **kwargs,
+) -> None:
     """PREPARED / REQUESTED — UI may render prepare without execution."""
     kw = _kw(kwargs)
     rec = get_recorder()
     sid = _session_hash(kw.get("session_id") or kw.get("task_id"))
-    fp = arg_fingerprint(params)
+    fp = arg_fingerprint(_tool_args(args, params, kw))
     # Preparation signal (renderer may spam this)
     rec.record(
         RecorderEvent(
@@ -63,6 +79,7 @@ def on_pre_tool_call(tool_name: str = "", params: Any = None, **kwargs) -> None:
 
 def on_post_tool_call(
     tool_name: str = "",
+    args: Any = None,
     params: Any = None,
     result: Any = None,
     **kwargs,
@@ -70,7 +87,7 @@ def on_post_tool_call(
     kw = _kw(kwargs)
     rec = get_recorder()
     sid = _session_hash(kw.get("session_id") or kw.get("task_id"))
-    fp = arg_fingerprint(params)
+    fp = arg_fingerprint(_tool_args(args, params, kw))
     name = str(tool_name or kw.get("name") or "unknown")
     err = kw.get("error") or kw.get("exception")
     success = err is None
@@ -220,8 +237,6 @@ def on_session_end(**kwargs) -> None:
             session_id_hash=_session_hash(kw.get("session_id")),
         )
     )
-    # Best-effort batch flush so a later `hermes minefield wtf` in a fresh
-    # process can see this session. Not a per-event fsync.
     try:
         rec.flush()
     except Exception:
