@@ -80,15 +80,22 @@ jobs:
         include:
           - label: "min v2026.8.31 / 0.21.0"
             ref: 29112bef099274229cadff79cdff7bf7b99c4b77
+            python: "3.11"
             experimental: false
           - label: "pinned d350422b / 0.21.5"
             ref: d350422b15863fc4c0b7962b122b625a0271516c
+            python: "3.11"
             experimental: false
           - label: "latest v2026.9.24 / 0.21.5"
             ref: f97608f178d1ffeca59860195ab7da295f7c8e5f
+            python: "3.11"
             experimental: false
           - label: "main (early warning)"
             ref: main
+            # Since 2026-09-24 Hermes main declares its pip dependencies only for
+            # Python >= 3.14 (older interpreters get them from its own locked
+            # toolchain), so an editable pip install needs 3.14 here.
+            python: "3.14"
             experimental: true
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -113,7 +120,7 @@ jobs:
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python }}
 
       # Hermes blocks wheel builds outside Nix, so `pip install git+...` (and the
       # upstream plugin-validate action that uses it) fails. Editable install works.
