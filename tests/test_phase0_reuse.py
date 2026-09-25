@@ -6,6 +6,7 @@ from __future__ import annotations
 def test_import_minefield_api():
     from minefield.api import (
         detect_target,
+        match_symptom,
         plan_checks,
         result_to_doctor_json,
         run_checks,
@@ -17,6 +18,7 @@ def test_import_minefield_api():
     assert callable(summarize)
     assert callable(detect_target)
     assert callable(result_to_doctor_json)
+    assert callable(match_symptom)
 
 
 def test_plan_lite_respects_budget_zero_requests():

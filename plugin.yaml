@@ -13,8 +13,8 @@ kind: standalone
 requires_hermes: ">=0.21,<0.22"
 python_dependencies:
   # Not on PyPI; pinned to the SHA CI tests against. Install by hand:
-  #   pip install "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@7b324f86d424c20bce177200851c968c1d70c536"
-  - "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@7b324f86d424c20bce177200851c968c1d70c536"
+  #   pip install "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@12822f3ec6d8600df113e773d2e588f3659f0120"
+  - "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@12822f3ec6d8600df113e773d2e588f3659f0120"
 provides_tools:
   - minefield_recent_incident
 provides_hooks:

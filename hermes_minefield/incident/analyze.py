@@ -9,7 +9,7 @@ from ..recorder.events import RecorderEvent
 from .classify import ClassificationResult, classify, compute_signals
 from .signals import percentile
 from .store import save_incident
-from .trap_match import match_traps
+from .trap_match import TrapMatchError, match_traps
 from .types import IncidentArtifact
 
 
@@ -27,11 +27,18 @@ def analyze_events(
     result: ClassificationResult = classify(signals, loop_streak_threshold=loop_streak_threshold)
     tool = signals.dominant_tool or "tool"
 
-    trap_matches = match_traps(
-        classification=result.classification,
-        symptom=result.observed_symptom,
-        serving_failure=result.serving_failure,
-    )
+    trap_match_error = None
+    try:
+        trap_matches = match_traps(
+            classification=result.classification,
+            symptom=result.observed_symptom,
+            serving_failure=result.serving_failure,
+        )
+    except TrapMatchError as exc:
+        # Preserve the incident, but never let a broken integration contract
+        # masquerade as "no Minefield trap matched".
+        trap_matches = []
+        trap_match_error = str(exc)
 
     status = "OBSERVED"
     if result.is_engineering_bug and not result.is_minefield_trap:
@@ -98,7 +105,8 @@ def analyze_events(
             f"api_errors={signals.total_api_errors}",
             f"rule={result.rule}",
         ]
-        + ([f"interrupted_turns={signals.interrupted_turns}"] if signals.interrupted_turns else []),
+        + ([f"interrupted_turns={signals.interrupted_turns}"] if signals.interrupted_turns else [])
+        + ([f"trap_match_error={trap_match_error}"] if trap_match_error else []),
     )
     if persist:
         save_incident(artifact)
@@ -112,7 +120,10 @@ def render_incident(artifact: IncidentArtifact, *, saved: bool = True) -> str:
     streak = artifact.repeated_call_counts.get("longest_no_progress_streak", equiv)
     blocks = artifact.repeated_call_counts.get("guard_blocks")
     trap_line = "NO"
-    if artifact.known_trap_matches:
+    if any(str(n).startswith("trap_match_error=") for n in artifact.notes or []):
+        # A broken Minefield contract is missing evidence, not "no match".
+        trap_line = "UNKNOWN (Minefield trap matching unavailable)"
+    elif artifact.known_trap_matches:
         m = artifact.known_trap_matches[0]
         trap_line = f"possible match {m.get('trap_id')} / {m.get('title')}"
 

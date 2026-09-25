@@ -10,14 +10,16 @@ permissions:
 
 env:
   # Bump deliberately (and update docs/IMPROVEMENT_PLAN.md §2 / T0.5 in the same PR).
-  MINEFIELD_REF: 7b324f86d424c20bce177200851c968c1d70c536
+  MINEFIELD_REF: 12822f3ec6d8600df113e773d2e588f3659f0120  # 0.2.0 (match_symptom API)
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
       - run: python -m pip install ruff
@@ -33,16 +35,19 @@ jobs:
         python-version: ["3.11", "3.12", "3.13"]
     steps:
       - name: Check out hermes-minefield
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
 
       - name: Check out Model Serving Minefield (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          persist-credentials: false
           repository: Blackwellboy/model-serving-minefield
           ref: ${{ env.MINEFIELD_REF }}
           path: _deps/model-serving-minefield
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -52,6 +57,11 @@ jobs:
           python -m pip install -e ./_deps/model-serving-minefield
           python -m pip install pytest PyYAML
           python -m pip install -e . --no-deps
+
+      - name: Assert Minefield integration version
+        run: |
+          python -c 'from importlib.metadata import version; v=version("model-serving-minefield"); print(v); assert v.startswith("0.2."), v'
+          python -c 'from minefield.api import match_symptom; assert callable(match_symptom)'
 
       - name: Compile
         run: python -m compileall -q hermes_minefield tests
@@ -81,23 +91,27 @@ jobs:
             ref: main
             experimental: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
 
       - name: Check out Model Serving Minefield (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          persist-credentials: false
           repository: Blackwellboy/model-serving-minefield
           ref: ${{ env.MINEFIELD_REF }}
           path: _deps/model-serving-minefield
 
       - name: Check out Hermes Agent
-        uses: actions/checkout@v4
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          persist-credentials: false
           repository: NousResearch/hermes-agent
           ref: ${{ matrix.ref }}
           path: _deps/hermes-agent
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.11"
 
@@ -125,3 +139,19 @@ jobs:
 
       - name: Gate A scenario suite (separate Hermes + CLI processes)
         run: pytest -q -m gate_a tests/e2e
+
+  hermes-admission:
+    # Hermes's own plugin-validate action (fixed upstream to build Hermes in an
+    # isolated locked toolchain), at a pinned current Hermes commit.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out hermes-minefield
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Validate against pinned current Hermes
+        uses: NousResearch/hermes-agent/.github/actions/plugin-validate@99a161531cc7b6ce8d91869666ea19cee0610156
+        with:
+          path: .
+          hermes-ref: 99a161531cc7b6ce8d91869666ea19cee0610156

@@ -5,7 +5,7 @@ A standalone **Hermes Agent plugin** that brings [Model Serving Minefield](https
 Minefield stays framework-neutral. This plugin is the Hermes-specific adapter:
 
 ```
-model-serving-minefield   registry, Doctor, traps (framework-neutral)
+model-serving-minefield   registry, Doctor, traps, match_symptom (framework-neutral, 0.2.x)
           ↑
 hermes-minefield          check / doctor adapter, flight recorder, wtf, contribution workflow
           ↑
@@ -67,7 +67,7 @@ Requires Hermes `>=0.21,<0.22`, the range CI proves (see "Compatibility" below).
 
 ```bash
 # 1) Minefield (not on PyPI) at the version CI tests against
-pip install "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@7b324f86d424c20bce177200851c968c1d70c536"
+pip install "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@12822f3ec6d8600df113e773d2e588f3659f0120"
 
 # 2) The plugin, pinned to a release commit
 hermes plugins install Blackwellboy/hermes-minefield --ref <release-sha> --enable

@@ -6,7 +6,7 @@
 > **Implementation status (2026-09-24):** Milestones A, B and C are implemented, plus T6.1–T6.2. CI is green across the Hermes compatibility matrix. What's left needs the owner: Gate A sign-off on a real Hermes install, the T6.3 tag, and T6.4 (locked).
 >
 > **Status:** `hermes-minefield` is **experimental**. Don't rely on its diagnoses until Gate A (§4.0) passes. This is about the Hermes adapter only. The `model-serving-minefield` registry and Doctor underneath are a separate, healthy system.
-> **Verified against:** hermes-agent `d350422b15863fc4c0b7962b122b625a0271516c` (v0.21.5) and model-serving-minefield `7b324f86d424c20bce177200851c968c1d70c536`.
+> **Verified against:** hermes-agent `d350422b15863fc4c0b7962b122b625a0271516c` (v0.21.5) and model-serving-minefield `12822f3ec6d8600df113e773d2e588f3659f0120`.
 
 ---
 
@@ -129,12 +129,13 @@ Hook runtime rules (`website/docs/user-guide/features/hooks.md`, section "Plugin
 - Hermes home: `hermes_constants.get_hermes_home()` (honours context-local overrides, then `HERMES_HOME`, then the default).
 - Tool-loop guardrails: `agent/tool_guardrails.py` (`IDEMPOTENT_TOOL_NAMES`, `MUTATING_TOOL_NAMES`, "idempotent_no_progress" = same args + same result). `agent/tool_result_classification.py::is_guardrail_refusal(result) -> bool` detects synthetic guardrail refusals in tool results.
 
-### 2.3 Minefield API (`minefield/api.py` @ `7b324f86`)
+### 2.3 Minefield API (`minefield/api.py` @ `12822f3e`, version 0.2.0)
 
 - `plan_checks(*, target=None, base_url=None, mode="lite", max_requests=None, capabilities=None, api_key=None, model=None, hf_repo=None, detect=False) -> ProbePlan`
 - `run_checks(plan, *, api_key=None, hf_repo=None, hf_revision="main", model=None) -> RunResult`
 - `RunResult` fields: `requests_planned`, `requests_executed`, `request_budget`, `findings`, `budget_exceeded: bool`, **`error: str|None`**, **`reachable: bool`**, `stack`, `coverage_line`.
 - `detect_target(base_url, *, api_key=None, model=None, …) -> TargetInfo` (GET probes only).
+- `match_symptom(text, *, limit=…) -> {"matches": [{"trap_ids", "title", "diagnosis_level", "score", "confirmation_check", "source_path"}, …]}`: the versioned public symptom-matching API (added in 0.2.0). `incident/trap_match.py` uses only this; it never walks registry internals. A missing or malformed API raises `TrapMatchError`, which `wtf` renders as trap matching `UNKNOWN`, never "no match" (owner PR #3).
 
 ---
 
@@ -190,7 +191,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
   - **Do:**
     1. Create `scripts/dev_setup.sh` (bash, `set -euo pipefail`). It should:
        - Create `.venv` with `python3 -m venv .venv`, unless it already exists.
-       - Clone `https://github.com/Blackwellboy/model-serving-minefield` into `_deps/model-serving-minefield`, check out the SHA in `MINEFIELD_REF` (default `7b324f86d424c20bce177200851c968c1d70c536`), and `pip install -e` it.
+       - Clone `https://github.com/Blackwellboy/model-serving-minefield` into `_deps/model-serving-minefield`, check out the SHA in `MINEFIELD_REF` (default `12822f3ec6d8600df113e773d2e588f3659f0120`), and `pip install -e` it.
        - `pip install "git+https://github.com/NousResearch/hermes-agent@${HERMES_REF}"` with `HERMES_REF` defaulting to `d350422b15863fc4c0b7962b122b625a0271516c`.
        - `pip install pytest PyYAML ruff` and `pip install -e . --no-deps`.
     2. Add `_deps/` and `.venv/` to `.gitignore` (`.venv/` is already there; add `_deps/`).
@@ -217,7 +218,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 - [x] **T0.3 CI: pin dependencies, add lint and Python 3.13**
   - **Why:** F22.
   - **Do:** In `.github/workflows/ci.yml`:
-    1. Add `ref: 7b324f86d424c20bce177200851c968c1d70c536` to the Minefield checkout step, with a comment explaining how to bump it.
+    1. Add `ref: 12822f3ec6d8600df113e773d2e588f3659f0120` to the Minefield checkout step, with a comment explaining how to bump it.
     2. Change the matrix to `["3.11", "3.12", "3.13"]`. *(Done. The plan originally said 3.10, but Hermes itself requires Python `>=3.11,<3.14` and the plugin runs in Hermes's interpreter, so `requires-python` is now `>=3.11`.)*
     3. Add a `lint` job: set up Python 3.12, `pip install ruff`, then `ruff check` and `ruff format --check`.
   - **Accept:** CI is green on the PR.
@@ -564,7 +565,7 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
     kind: standalone
     requires_hermes: ">=0.21,<0.22"   # must match T0.5's proven range
     python_dependencies:
-      - "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@7b324f86d424c20bce177200851c968c1d70c536"
+      - "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@12822f3ec6d8600df113e773d2e588f3659f0120"
     provides_hooks: [ …the exact registered list… ]
     config_schema:
       lite_max_requests: {type: int, default: 5, description: "Lite request budget (0-5)"}
@@ -653,5 +654,5 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 - `IncidentArtifact.new_id()` uses 4 hex chars, about 65k per day. Consider 8.
 - Loop detection only catches *consecutive* identical calls. Hermes's guardrails also catch repeating cycles (A,B,A,B… with identical args and results). Add cycle detection to `signals.py` and a `tool_loop_cycle` rule.
 - `cache.put_entry` is a read-modify-write of one JSON file. Two processes writing at the same moment can drop one entry (never corrupt it: writes are atomic). Acceptable for a cache; revisit if it matters.
-- Upstream: Hermes's own `.github/actions/plugin-validate` runs `pip install git+…hermes-agent`, which Hermes's `setup.py` build guard rejects outside Nix. Worth reporting upstream (**owner approval required**). This repo's CI works around it with an editable install.
+- ~~Upstream: Hermes's own `.github/actions/plugin-validate` runs `pip install git+…hermes-agent`, which Hermes's `setup.py` build guard rejects outside Nix.~~ **Resolved upstream:** at `99a16153` the action builds Hermes in an isolated locked toolchain. CI now runs it as the `hermes-admission` job (added by owner PR #3). The `hermes-compat` matrix keeps the editable install for older refs.
 - `hermes plugins validate` is missing on Hermes 0.21.0, so the minimum-version CI entry runs the contract, loader and Gate A tests but not the validator.
