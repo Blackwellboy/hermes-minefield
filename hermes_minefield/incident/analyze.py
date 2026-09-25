@@ -18,6 +18,8 @@ def analyze_events(
     session_id_hash: Optional[str] = None,
     model_fingerprint: Optional[str] = None,
     runtime_fingerprint: Optional[str] = None,
+    stack_hint: Optional[str] = None,
+    model_hint: Optional[str] = None,
     since_seconds: Optional[float] = None,
     persist: bool = True,
 ) -> IncidentArtifact:
@@ -31,6 +33,8 @@ def analyze_events(
             classification=result.classification,
             symptom=result.observed_symptom,
             serving_failure=result.serving_failure,
+            stack=stack_hint,
+            model=model_hint,
         )
     except TrapMatchError as exc:
         # Preserve the incident, but never let a broken integration contract
@@ -104,9 +108,12 @@ def render_incident(artifact: IncidentArtifact) -> str:
     # incidents (recorder does not yet emit Hermes guardrail warn/block counts).
     no_progress_streak = equiv
     trap_line = "NO"
+    confirmation_line = None
     if artifact.known_trap_matches:
         m = artifact.known_trap_matches[0]
         trap_line = f"possible match {m.get('trap_id')} / {m.get('title')}"
+        if m.get("confirmation_check"):
+            confirmation_line = str(m["confirmation_check"])
 
     lines = [
         "MINEFIELD INCIDENT",
@@ -132,6 +139,11 @@ def render_incident(artifact: IncidentArtifact) -> str:
         f"Severity:       {artifact.severity}",
         f"Serving failure: {'YES' if artifact.serving_failure else 'NO'}",
         f"Known Minefield trap: {trap_line}",
+        *(
+            ["Top-match confirmation check:", f"  {confirmation_line}"]
+            if confirmation_line
+            else []
+        ),
         f"Engineering bug (not trap): {'YES' if artifact.is_engineering_bug and not artifact.is_minefield_trap else 'NO'}",
         "",
         f"Recommendation:",
