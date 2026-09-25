@@ -12,6 +12,9 @@ from ..paths import drafts_dir
 from .sanitize import sanitize_issue_body, sanitize_packet
 
 
+MINEFIELD_REPO = "Blackwellboy/model-serving-minefield"
+
+
 @dataclass
 class IssueDraft:
     title: str
@@ -28,6 +31,32 @@ class IssueDraft:
     body: str = ""
 
     def render_body(self) -> str:
+        if self.target_repo == MINEFIELD_REPO:
+            lines = [
+                "### What broke",
+                self.summary,
+                "",
+                "### What you saw",
+                self.observed,
+                "",
+                "### What fixed it",
+                self.impact or "Still under investigation.",
+                "",
+                "### What were you serving",
+                "```json",
+                json.dumps(self.environment, indent=2, sort_keys=True),
+                "```",
+                "",
+                "### Optional diagnostic evidence",
+                self.evidence,
+                "",
+                "### Sanitization notes",
+                *[f"- {n}" for n in self.sanitization_notes],
+            ]
+            if self.incident_id:
+                lines.extend(["", f"Local incident: `{self.incident_id}`"])
+            return sanitize_issue_body("\n".join(lines))
+
         lines = [
             "## Summary",
             self.summary,
@@ -89,6 +118,8 @@ def build_issue_draft(
                     "repeated_call_counts": artifact.get("repeated_call_counts"),
                     "severity": artifact.get("severity"),
                     "confidence": artifact.get("confidence"),
+                    "known_trap_matches": artifact.get("known_trap_matches"),
+                    "serving_failure": artifact.get("serving_failure"),
                 },
                 indent=2,
                 sort_keys=True,
