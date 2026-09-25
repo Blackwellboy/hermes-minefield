@@ -116,6 +116,36 @@ def test_analyzer_forwards_transient_context_and_renders_confirmation(monkeypatc
     assert "Compare streamed content and reasoning deltas." in rendered
 
 
+
+
+def test_run_wtf_passes_resolved_context_only_to_analyzer(monkeypatch, fresh_recorder):
+    from types import SimpleNamespace
+    from hermes_minefield.commands import wtf as wtf_mod
+
+    seen = {}
+    original_analyze = wtf_mod.analyze_events
+
+    monkeypatch.setattr(
+        wtf_mod,
+        "resolve_target",
+        lambda: SimpleNamespace(model="example/model", provider="vllm"),
+    )
+
+    def capture(events, **kwargs):
+        seen.update(kwargs)
+        return original_analyze(events, **kwargs)
+
+    monkeypatch.setattr(wtf_mod, "analyze_events", capture)
+    result = wtf_mod.run_wtf(window="60s", persist=False)
+
+    assert result["ok"] is True
+    assert seen["stack_hint"] == "vllm"
+    assert seen["model_hint"] == "example/model"
+    payload = result["artifact"]
+    assert "stack_hint" not in payload
+    assert "model_hint" not in payload
+
+
 def test_only_recognized_serving_providers_become_stack_hints():
     assert _stack_hint("vllm") == "vllm"
     assert _stack_hint("SGLang") == "sglang"
