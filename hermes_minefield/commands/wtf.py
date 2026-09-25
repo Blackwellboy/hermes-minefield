@@ -11,8 +11,25 @@ from ..incident.analyze import analyze_events, render_incident
 from ..incident.store import save_incident
 from ..privacy import stable_hash
 from ..recorder.store import get_recorder
+from ..target import local_target_hints
 
 _DURATION_RE = re.compile(r"^(\d+)\s*([smhd])?$", re.I)
+
+_STACK_ALIASES = {
+    "vllm": "vllm",
+    "sglang": "sglang",
+    "ollama": "ollama",
+    "llama.cpp": "llama.cpp",
+    "llamacpp": "llama.cpp",
+    "mlx": "mlx_lm",
+    "mlx_lm": "mlx_lm",
+}
+
+
+def _stack_hint(provider: str | None) -> str | None:
+    if not provider:
+        return None
+    return _STACK_ALIASES.get(provider.strip().lower())
 
 
 def parse_window(raw: str | None, default_seconds: float = 300.0) -> float:
@@ -68,6 +85,19 @@ def run_wtf(
     """Freeze + classify. ``save``: True/False forces; None saves only anomalies.
     ``persist=False`` (tests/legacy) never saves."""
     since = parse_window(window, default_seconds=300.0)
+    # Matching context is transient. Raw model/provider values are not added
+    # to the persisted incident artifact; only the existing privacy-safe
+    # fingerprints remain durable. Read from local config only: wtf never
+    # touches the network (Hermes's runtime resolution can).
+    stack_hint = None
+    model_hint = None
+    try:
+        hints = local_target_hints()
+        model_hint = hints.model
+        stack_hint = _stack_hint(hints.provider)
+    except Exception:
+        pass
+
     rec = get_recorder()
     session = (session or "current").strip()
     if session == "all":
@@ -85,6 +115,8 @@ def run_wtf(
     artifact = analyze_events(
         events,
         session_id_hash=sid_hash,
+        stack_hint=stack_hint,
+        model_hint=model_hint,
         since_seconds=since,
         persist=False,
         loop_streak_threshold=load_plugin_config().loop_streak_threshold,

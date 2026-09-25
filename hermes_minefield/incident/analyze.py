@@ -19,6 +19,8 @@ def analyze_events(
     session_id_hash: str | None = None,
     model_fingerprint: str | None = None,
     runtime_fingerprint: str | None = None,
+    stack_hint: str | None = None,
+    model_hint: str | None = None,
     since_seconds: float | None = None,
     persist: bool = True,
     loop_streak_threshold: int | None = None,
@@ -33,6 +35,8 @@ def analyze_events(
             classification=result.classification,
             symptom=result.observed_symptom,
             serving_failure=result.serving_failure,
+            stack=stack_hint,
+            model=model_hint,
         )
     except TrapMatchError as exc:
         # Preserve the incident, but never let a broken integration contract
@@ -120,12 +124,15 @@ def render_incident(artifact: IncidentArtifact, *, saved: bool = True) -> str:
     streak = artifact.repeated_call_counts.get("longest_no_progress_streak", equiv)
     blocks = artifact.repeated_call_counts.get("guard_blocks")
     trap_line = "NO"
+    confirmation_line = None
     if any(str(n).startswith("trap_match_error=") for n in artifact.notes or []):
         # A broken Minefield contract is missing evidence, not "no match".
         trap_line = "UNKNOWN (Minefield trap matching unavailable)"
     elif artifact.known_trap_matches:
         m = artifact.known_trap_matches[0]
         trap_line = f"possible match {m.get('trap_id')} / {m.get('title')}"
+        if m.get("confirmation_check"):
+            confirmation_line = str(m["confirmation_check"])
 
     lines = [
         "MINEFIELD INCIDENT",
@@ -149,6 +156,7 @@ def render_incident(artifact: IncidentArtifact, *, saved: bool = True) -> str:
         f"Severity:       {artifact.severity}",
         f"Serving failure: {'YES' if artifact.serving_failure else 'NO'}",
         f"Known Minefield trap: {trap_line}",
+        *(["Top-match confirmation check:", f"  {confirmation_line}"] if confirmation_line else []),
         f"Engineering bug (not trap): {'YES' if artifact.is_engineering_bug and not artifact.is_minefield_trap else 'NO'}",
         "",
         "Recommendation:",

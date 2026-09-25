@@ -76,6 +76,26 @@ def _config_target(
     return url, mid, provider, notes
 
 
+@dataclass(frozen=True)
+class TargetHints:
+    provider: str | None
+    model: str | None
+
+
+def local_target_hints(config: Mapping[str, Any] | None = None) -> TargetHints:
+    """Provider name and model id from Hermes's config file only. Never raises.
+
+    Unlike :func:`resolve_target`, this never runs Hermes's runtime provider
+    resolution, which can probe ``/models`` or refresh OAuth tokens over the
+    network. ``wtf`` uses it for transient matching hints and must stay offline.
+    """
+    try:
+        _url, model, provider, _notes = _config_target(None, config)
+    except Exception:
+        return TargetHints(None, None)
+    return TargetHints(provider=provider, model=model)
+
+
 def resolve_target(
     *,
     base_url: str | None = None,

@@ -29,6 +29,8 @@ def match_traps(
     classification: str,
     symptom: str,
     serving_failure: bool,
+    stack: str | None = None,
+    model: str | None = None,
     limit: int = 5,
 ) -> list[dict[str, Any]]:
     """Return ranked canonical trap candidates from Minefield's public API.
@@ -47,7 +49,12 @@ def match_traps(
         raise TrapMatchError(f"minefield.api.match_symptom unavailable: {type(exc).__name__}") from exc
 
     try:
-        result = match_symptom(symptom or "", limit=max(1, int(limit)))
+        result = match_symptom(
+            symptom or "",
+            stack=stack,
+            model=model,
+            limit=max(1, int(limit)),
+        )
     except Exception as exc:
         raise TrapMatchError(f"minefield symptom matching failed: {type(exc).__name__}") from exc
 
