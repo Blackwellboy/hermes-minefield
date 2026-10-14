@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 env:
-  # Bump deliberately (and update docs/IMPROVEMENT_PLAN.md §2 / T0.5 in the same PR).
-  MINEFIELD_REF: 3425846011fa65a27569eed6405e52d33431b16e  # bounded execution candidate; requires core branch
+  # Bump deliberately (and update docs/IMPROVEMENT_PLAN.md Â§2 / T0.5 in the same PR).
+  MINEFIELD_REF: 6c75e3097832419fb224a918b4d285f16f5bfb62  # bounded execution candidate; requires core branch
 
 jobs:
   lint:

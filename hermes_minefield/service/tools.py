@@ -2,8 +2,6 @@
 
 import json
 
-from minefield.api import match_symptom
-
 from ..agent_tool import available
 from .workspace import Workspace
 
@@ -63,6 +61,8 @@ def invoke(name, args, context):
             raise ValueError("invalid plan arguments")
         return Workspace().preview(args["probe_ids"])
     if name == "minefield_search":
+        from minefield.api import match_symptom
+
         if set(args) != {"query"} or type(args["query"]) is not str or not 1 <= len(args["query"]) <= 500:
             raise ValueError("invalid query")
         matches = match_symptom(args["query"], limit=3)

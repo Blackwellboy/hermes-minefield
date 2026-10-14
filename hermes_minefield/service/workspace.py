@@ -9,8 +9,6 @@ from __future__ import annotations
 import json
 from dataclasses import asdict
 
-from minefield.api import plan_checks
-
 
 class Workspace:
     def home(self):
@@ -34,6 +32,8 @@ class Workspace:
         }
 
     def checks(self):
+        from minefield.api import plan_checks
+
         # An inert, explicit placeholder avoids provider/config resolution.
         # detect=False is essential: a catalogue view must never issue GETs.
         plan = plan_checks(base_url="http://127.0.0.1:1/v1", mode="doctor", detect=False)
@@ -47,6 +47,8 @@ class Workspace:
         }
 
     def preview(self, probe_ids):
+        from minefield.api import plan_checks
+
         if type(probe_ids) is not list or not 1 <= len(probe_ids) <= 64:
             raise ValueError("select 1..64 named probes")
         if any(type(p) is not str or len(p) > 100 for p in probe_ids) or len(set(probe_ids)) != len(

@@ -43,3 +43,12 @@ later broad attempt failed during import-time assertions. This does not prove al
 failures are environmental. Complete core release gates remain unresolved.
 Combined adapter/backend tests also hung under that load; separate invocations
 are recorded rather than hidden. Final Gate A rerun: 7 passed, 7 deselected.
+
+## CI follow-up
+
+Initial remote run passed Python 3.11/3.12/3.13 unit jobs and minimum/current
+stable Hermes compatibility. Admission failed because newly added registration
+imports required the optional core before use; imports are now deferred. Core CI
+found pytest in its unittest-only job; the same three tests now run as unittest.
+Core bundle was regenerated and verified. Current core pin: `6c75e3097832419fb224a918b4d285f16f5bfb62`.
+The rerun, including secret scan and generated-artifact checks, remains pending.
