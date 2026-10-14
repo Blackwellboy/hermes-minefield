@@ -13,3 +13,4 @@ htmlcov/
 *.log
 _deps/
 .hermes-test-home/
+node_modules/

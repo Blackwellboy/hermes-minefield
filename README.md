@@ -12,7 +12,20 @@ hermes-minefield          check / doctor adapter, flight recorder, wtf, contribu
 Hermes
 ```
 
-> **Status: experimental (0.2.0).** 0.1.x read the wrong Hermes hook arguments and could report the opposite of what happened. 0.2.0 fixes that and is tested against real Hermes processes on 0.21.0–0.21.5. See [CHANGELOG.md](CHANGELOG.md) and [docs/IMPROVEMENT_PLAN.md](docs/IMPROVEMENT_PLAN.md).
+> **Integration draft — not OFFLINE_BETA_READY.** This branch adds native catalogue/preview surfaces, bounded fixture execution, and a contribution reference service. Native approval, execution/progress and consent activation are incomplete. Current Hermes v0.21.7 loader/validator and real SDK source component tests pass; this is not full Electron or live-model qualification. See [implementation status](docs/integration/IMPLEMENTATION_STATUS.md) and [acceptance evidence](docs/integration/ACCEPTANCE_MATRIX.md). Earlier 0.2.0 compatibility results do not certify this branch.
+
+The shared engine is pinned to the unmerged bounded-execution candidate
+`3425846011fa65a27569eed6405e52d33431b16e`. Native `/minefield` offers Home,
+checks, preview, privacy information and back/cancel. No target is discovered on
+opening it. Desktop uses the actual SDK pane and plugin backend. Privileged
+controls remain unavailable until the owner-event bridge is verified. Automatic
+contributions are implemented and tested against a loopback receiver but are not
+wired to production host hooks or a public destination. Read the
+[privacy disclosure](docs/integration/PRIVACY.md) before reviewing that service.
+
+Build a review zip with `python scripts/package_unified.py <output.zip>`. The zip
+contains agent, Desktop and backend halves; the Python wheel contains agent code
+and skill resources only. Do not install this draft into an active Hermes profile.
 
 ## The integrity rule
 
@@ -67,7 +80,7 @@ Requires Hermes `>=0.21,<0.22`, the range CI proves (see "Compatibility" below).
 
 ```bash
 # 1) Minefield (not on PyPI) at the version CI tests against
-pip install "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@12822f3ec6d8600df113e773d2e588f3659f0120"
+pip install "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@3425846011fa65a27569eed6405e52d33431b16e"
 
 # 2) The plugin, pinned to a release commit
 hermes plugins install Blackwellboy/hermes-minefield --ref <release-sha> --enable

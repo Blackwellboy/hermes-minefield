@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import atexit
 import logging
+from pathlib import Path
 from typing import Any
 
-from . import agent_tool, auto_lite
+from . import agent_tool
 from .commands.cli import minefield_command, register_cli
 from .commands.dispatch import handle_slash
 from .config import load_plugin_config, set_plugin_id
@@ -81,7 +82,8 @@ def register(ctx: Any) -> None:
 
     def _on_session_start(**kwargs):
         rec_hooks.on_session_start(**kwargs)
-        auto_lite.maybe_start()  # no-op unless auto_lite: true; never blocks
+        # Session observation never grants an active diagnostic request. Legacy
+        # auto_lite settings do not authorize the new exact-plan workflow.
 
     ctx.register_hook("on_session_start", _safe(_on_session_start))
     ctx.register_hook("on_session_end", _safe(rec_hooks.on_session_end))
@@ -99,5 +101,15 @@ def register(ctx: Any) -> None:
         check_fn=agent_tool.available,
         description=agent_tool.SCHEMA["description"],
     )
+
+    from .service import tools as workspace_tools
+
+    workspace_tools.register(ctx)
+    if hasattr(ctx, "register_skill"):
+        ctx.register_skill(
+            "minefield",
+            Path(__file__).parent / "resources" / "SKILL.md",
+            description="Local serving diagnosis and named-check previews",
+        )
 
     logger.info("hermes-minefield plugin registered (auto_lite=%s)", cfg.auto_lite)
