@@ -15,6 +15,8 @@ from typing import Any
 from ..paths import atomic_write_text, drafts_dir
 from .sanitize import sanitize_issue_body, sanitize_packet
 
+MINEFIELD_REPO = "Blackwellboy/model-serving-minefield"
+
 
 @dataclass
 class IssueDraft:
@@ -35,6 +37,37 @@ class IssueDraft:
     user_selected_repo: bool = False
 
     def render_body(self) -> str:
+        if (self.target_repo or "").strip().lower() == MINEFIELD_REPO.lower():
+            # `impact` is the rule's recommended action, a suggestion nobody has applied yet.
+            # The trap form's "What fixed it" must never claim a fix that did not happen.
+            fixed = "Not fixed yet."
+            if self.impact:
+                fixed += f" Suggested next step (not yet applied): {self.impact}"
+            lines = [
+                "### What broke",
+                self.summary,
+                "",
+                "### What you saw",
+                self.observed,
+                "",
+                "### What fixed it",
+                fixed,
+                "",
+                "### What were you serving",
+                "```json",
+                json.dumps(self.environment, indent=2, sort_keys=True),
+                "```",
+                "",
+                "### Optional diagnostic evidence",
+                self.evidence,
+                "",
+                "### Sanitization notes",
+                *[f"- {n}" for n in self.sanitization_notes],
+            ]
+            if self.incident_id:
+                lines.extend(["", f"Local incident: `{self.incident_id}`"])
+            return sanitize_issue_body("\n".join(lines))
+
         lines = [
             "## Summary",
             self.summary,
@@ -95,6 +128,8 @@ def build_issue_draft(
                     "repeated_call_counts": artifact.get("repeated_call_counts"),
                     "severity": artifact.get("severity"),
                     "confidence": artifact.get("confidence"),
+                    "known_trap_matches": artifact.get("known_trap_matches"),
+                    "serving_failure": artifact.get("serving_failure"),
                 },
                 indent=2,
                 sort_keys=True,
