@@ -166,12 +166,36 @@ class MinefieldPluginConfig:
         return cls.from_section(find_section(data or {}))
 
 
+# Why the last load_hermes_config() came back empty, for status/target errors.
+# None after a successful read.
+last_config_load_error: str | None = None
+
+
+def _yaml_safe_load(text: str) -> Any:
+    """PyYAML when present, else ruamel.yaml.
+
+    Hermes environments since 2026-10 ship ruamel.yaml (for comment-preserving
+    config writes) and not PyYAML, so an ``import yaml``-only loader reads every
+    config as empty there.
+    """
+    try:
+        import yaml
+    except ImportError:
+        yaml = None
+    if yaml is not None:
+        return yaml.safe_load(text)
+    from ruamel.yaml import YAML
+
+    return YAML(typ="safe", pure=True).load(text)
+
+
 def load_hermes_config() -> dict[str, Any]:
     """The active Hermes config. Never raises.
 
     Uses Hermes's own loader when available (profiles, managed config, env
     overrides); otherwise reads ``$HERMES_HOME/config.yaml``.
     """
+    global last_config_load_error
     try:
         from hermes_cli.config import load_config_readonly
     except ImportError:
@@ -180,20 +204,25 @@ def load_hermes_config() -> dict[str, Any]:
         try:
             data = load_config_readonly()
             if isinstance(data, Mapping):
+                last_config_load_error = None
                 return dict(data)  # shallow copy; never mutate Hermes's cache
         except Exception:
             logger.debug("hermes load_config_readonly failed; falling back", exc_info=True)
     try:
-        import yaml
-
         from .paths import hermes_home
 
         path = hermes_home() / "config.yaml"
         if not path.is_file():
+            last_config_load_error = f"no config file at {path}"
             return {}
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except Exception:
+        data = _yaml_safe_load(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            last_config_load_error = f"{path} is not a YAML mapping"
+            return {}
+        last_config_load_error = None
+        return data
+    except Exception as e:
+        last_config_load_error = f"could not read Hermes config: {type(e).__name__}: {e}"
         return {}
 
 

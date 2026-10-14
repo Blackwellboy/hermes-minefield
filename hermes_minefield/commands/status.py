@@ -48,7 +48,7 @@ def run_status(*, base_url: str | None = None, model: str | None = None) -> dict
                 f"requests={entry.requests_executed}"
             )
     except Exception as e:
-        cache_age = f"target unresolved: {type(e).__name__}"
+        cache_age = f"target unresolved: {type(e).__name__}: {e}"
 
     rec = get_recorder()
     stats = rec.stats()

@@ -34,8 +34,15 @@ Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). S
 - Manifest v2 (`requires_hermes >=0.21,<0.22`, `config_schema`, pinned dependency). Safe `auto_lite`. Opt-in read-only `minefield_recent_incident` agent tool. (T5.1, T5.3, T5.4)
 - CI: lint; tests on 3.11–3.13; `hermes-compat` matrix (0.21.0, pinned, 0.21.5, and `main` non-blocking) with the hook contract test, real-loader tests and the Gate A scenario suite. (T0.3–T0.5, T3.8)
 
+### Fixed — integration onto main (2026-10-15)
+- Carries main's #7: the file loader falls back to `ruamel.yaml` when PyYAML is missing (Hermes 0.21.6+ environments ship only ruamel), records why a read came back empty, and `target unresolved` says so. Provider blocks written as `api:` resolve.
+- A missing Minefield core package is now `UNKNOWN` with an install hint (`pip install "model-serving-minefield>=0.2,<0.3"` or `hermes pm repair`), not "internal error (ModuleNotFoundError)".
+- A Lite plan over budget shows its `HARD_BUDGET_VIOLATION` reason as `UNKNOWN` instead of "internal error (RuntimeError)".
+- `HERMES_PLUGINS_DEBUG=1` now actually adds the traceback to an internal error. Without it, only the exception class is shown (exception text can carry paths or secrets).
+
 ### Changed
 - Python `>=3.11` (Hermes's own floor). `auto_lite: prompt` is retired (it reads as `false`). Incident render drops duplicated lines. `NO_PROGRESS_STREAK` is now the real streak.
+- Settings lookup order changed: `plugins.entries.<id>.settings` (then `.config`, then the entry itself) now wins over a top-level `minefield:` block, and settings written directly at the config root are no longer read. 0.1.x preferred the top-level `minefield:` block. Move settings under `plugins.entries.hermes-minefield.settings`.
 - Dated notes moved to `docs/history/`.
 
 ## [0.1.0] — 2026-08-25

@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import shlex
+import traceback
 from collections.abc import Callable
 from typing import Any
 
+from .. import verdict as V
 from ..cache import clear_cache
 from .check import run_check
 from .contribute import run_contribute
@@ -63,20 +66,53 @@ def _slash_parser() -> argparse.ArgumentParser:
     return parser
 
 
+CORE_MISSING = (
+    "the Minefield core package is not importable from the Python that runs Hermes. "
+    'Install it there with `pip install "model-serving-minefield>=0.2,<0.3"`, '
+    "or run `hermes pm repair` if Hermes manages this plugin's environment."
+)
+
+
+def _debug_suffix() -> str:
+    """The traceback, but only when the user asked for it (HERMES_PLUGINS_DEBUG=1)."""
+    if not os.environ.get("HERMES_PLUGINS_DEBUG"):
+        return ""
+    return "\n\n" + traceback.format_exc().rstrip()
+
+
 def _guard(fn: Callable[..., dict[str, Any]], **kw: Any) -> dict[str, Any]:
     try:
         return fn(**kw)
     except (ValueError, PermissionError) as e:
         return {"ok": False, "text": f"minefield: {e}"}
-    except Exception as e:
-        logger.debug("minefield command failed", exc_info=True)
+    except ModuleNotFoundError as e:
+        if (e.name or "").split(".")[0] != "minefield":
+            return _internal_error(e)
+        logger.debug("minefield core missing", exc_info=True)
         return {
             "ok": False,
-            "text": (
-                f"minefield: internal error ({type(e).__name__}). "
-                "Run with HERMES_PLUGINS_DEBUG=1 for details."
-            ),
+            "verdict": V.UNKNOWN,
+            "text": f"minefield: {CORE_MISSING}\n\n{V.line(V.UNKNOWN, 'not run')}{_debug_suffix()}",
         }
+    except RuntimeError as e:
+        if str(e).startswith("HARD_BUDGET_VIOLATION"):
+            # A refusal with a reason the user can act on, not an internal error.
+            return {
+                "ok": False,
+                "verdict": V.UNKNOWN,
+                "text": f"minefield: {e}\n\n{V.line(V.UNKNOWN, 'not run')}",
+            }
+        return _internal_error(e)
+    except Exception as e:
+        return _internal_error(e)
+
+
+def _internal_error(e: BaseException) -> dict[str, Any]:
+    logger.debug("minefield command failed", exc_info=True)
+    # Exception text can carry paths or secrets and chats can be shared: only the class name
+    # by default; the traceback when the user opts in.
+    hint = _debug_suffix() or " Run with HERMES_PLUGINS_DEBUG=1 for details."
+    return {"ok": False, "text": f"minefield: internal error ({type(e).__name__}).{hint}"}
 
 
 def _clear_cache() -> dict[str, Any]:

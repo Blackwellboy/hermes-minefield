@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from . import config as _config
 from .config import load_hermes_config
 
 logger = logging.getLogger(__name__)
@@ -70,7 +71,12 @@ def _config_target(
         providers = cfg.get("providers") if isinstance(cfg.get("providers"), Mapping) else {}
         pblock = providers.get(provider) if isinstance(providers, Mapping) else None
         if isinstance(pblock, Mapping):
-            url = _as_str(pblock.get("base_url")) or _as_str(pblock.get("baseUrl"))
+            # Hermes `providers:` entries write the endpoint as `api:`.
+            url = (
+                _as_str(pblock.get("base_url"))
+                or _as_str(pblock.get("baseUrl"))
+                or _as_str(pblock.get("api"))
+            )
             if url:
                 notes.append(f"resolved_from_provider:{provider}")
     return url, mid, provider, notes
@@ -149,9 +155,11 @@ def resolve_target(
         )
 
     if not cfg_url:
-        raise ValueError(
-            "No model base_url configured. Pass --base-url or set model.base_url in Hermes config."
-        )
+        msg = "No model base_url configured. Pass --base-url or set model.base_url in Hermes config."
+        if config is None and _config.last_config_load_error:
+            msg += f" (Hermes config was not read: {_config.last_config_load_error})"
+        raise ValueError(msg)
+
     return ResolvedTarget(
         base_url=_norm(cfg_url),
         model=mid,

@@ -12,7 +12,7 @@ hermes-minefield          check / doctor adapter, flight recorder, wtf, contribu
 Hermes
 ```
 
-> **Status: experimental (0.2.0).** 0.1.x read the wrong Hermes hook arguments and could report the opposite of what happened. 0.2.0 fixes that and is tested against real Hermes processes on 0.21.0–0.21.5. See [CHANGELOG.md](CHANGELOG.md) and [docs/IMPROVEMENT_PLAN.md](docs/IMPROVEMENT_PLAN.md).
+> **Status: experimental (0.2.0).** 0.1.x read the wrong Hermes hook arguments and could report the opposite of what happened. 0.2.0 fixes that and is tested against real Hermes processes on 0.21.0–0.21.5 and 0.21.7 (Gate A 7/7 on 0.21.7, 2026-10-15). See [CHANGELOG.md](CHANGELOG.md) and [docs/IMPROVEMENT_PLAN.md](docs/IMPROVEMENT_PLAN.md).
 
 ## The integrity rule
 

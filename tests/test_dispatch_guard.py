@@ -50,6 +50,47 @@ def test_unexpected_exception_is_contained(tmp_hermes_home, monkeypatch):
     assert rc == 1
 
 
+def test_missing_core_is_unknown_with_an_install_hint(tmp_hermes_home, monkeypatch):
+    def no_core(**kw):
+        raise ModuleNotFoundError("No module named 'minefield'", name="minefield")
+
+    monkeypatch.setattr(dispatch, "run_check", no_core)
+    out = slash_result("check")
+    assert out["verdict"] == V.UNKNOWN
+    assert "model-serving-minefield" in out["text"] and "hermes pm repair" in out["text"]
+
+
+def test_other_missing_modules_stay_internal_errors(tmp_hermes_home, monkeypatch):
+    def other(**kw):
+        raise ModuleNotFoundError("No module named 'secret_dep'", name="secret_dep")
+
+    monkeypatch.setattr(dispatch, "run_check", other)
+    text = handle_slash("check")
+    assert text.startswith("minefield: internal error (ModuleNotFoundError)")
+    assert "secret_dep" not in text
+
+
+def test_budget_refusal_is_shown_not_hidden(tmp_hermes_home, monkeypatch):
+    def over(**kw):
+        raise RuntimeError("HARD_BUDGET_VIOLATION: plan expects 9 > budget 5")
+
+    monkeypatch.setattr(dispatch, "run_check", over)
+    out = slash_result("check")
+    assert out["verdict"] == V.UNKNOWN
+    assert "plan expects 9 > budget 5" in out["text"]
+
+
+def test_debug_env_shows_the_traceback_only_when_set(tmp_hermes_home, monkeypatch):
+    def boom(**kw):
+        raise KeyError("secret-internal-detail")
+
+    monkeypatch.setattr(dispatch, "run_status", boom)
+    monkeypatch.delenv("HERMES_PLUGINS_DEBUG", raising=False)
+    assert "Traceback" not in handle_slash("status")
+    monkeypatch.setenv("HERMES_PLUGINS_DEBUG", "1")
+    assert "Traceback" in handle_slash("status")
+
+
 def test_value_error_is_reported(tmp_hermes_home, monkeypatch):
     def bad(**kw):
         raise ValueError("max_requests must be >= 0")
