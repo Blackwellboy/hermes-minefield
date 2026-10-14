@@ -1,0 +1,29 @@
+{
+  "about": "3 identical calls in each of two sessions: streak is per session",
+  "expected": {
+    "rule": "aligned"
+  },
+  "events": [
+    {
+      "repeat": 3,
+      "each": [
+        {
+          "type": "tool.executed",
+          "tool_name": "read_file",
+          "tool_arg_fingerprint": "a",
+          "result_fingerprint": "r",
+          "session_id_hash": "s1",
+          "success": true
+        },
+        {
+          "type": "tool.executed",
+          "tool_name": "read_file",
+          "tool_arg_fingerprint": "a",
+          "result_fingerprint": "r",
+          "session_id_hash": "s2",
+          "success": true
+        }
+      ]
+    }
+  ]
+}

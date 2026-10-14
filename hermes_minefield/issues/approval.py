@@ -7,7 +7,6 @@ Only direct user confirmation phrases (or CLI --i-approve-submit) count.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from ..privacy import looks_like_approval
 
@@ -20,7 +19,7 @@ class ApprovalDecision:
 
 def evaluate_approval(
     *,
-    user_reply: Optional[str] = None,
+    user_reply: str | None = None,
     cli_flag: bool = False,
     from_model: bool = False,
 ) -> ApprovalDecision:

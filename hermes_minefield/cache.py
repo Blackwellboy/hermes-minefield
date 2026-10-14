@@ -6,9 +6,9 @@ import json
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from .paths import cache_dir
+from .paths import atomic_write_text, cache_dir
 
 
 @dataclass
@@ -40,18 +40,22 @@ def load_cache() -> dict[str, Any]:
 
 def save_cache(data: dict[str, Any]) -> None:
     p = _path()
-    p.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
+    atomic_write_text(p, json.dumps(data, indent=2, sort_keys=True))
 
 
-def get_entry(fingerprint: str) -> Optional[CacheEntry]:
+def get_entry(fingerprint: str, *, ttl_days: int | None = None) -> CacheEntry | None:
+    """Cached entry, or None. With ``ttl_days``, an expired entry is a miss."""
     data = load_cache()
     raw = (data.get("entries") or {}).get(fingerprint)
     if not isinstance(raw, dict):
         return None
     try:
-        return CacheEntry(**{k: raw[k] for k in CacheEntry.__dataclass_fields__})
+        entry = CacheEntry(**{k: raw[k] for k in CacheEntry.__dataclass_fields__})
     except Exception:
         return None
+    if ttl_days is not None and not is_fresh(entry, ttl_days=ttl_days):
+        return None
+    return entry
 
 
 def put_entry(entry: CacheEntry) -> None:

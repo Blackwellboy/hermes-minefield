@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from typing import Any
 
 
 def register_cli(subparser: argparse.ArgumentParser) -> None:
@@ -33,13 +32,18 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
     p_doc.add_argument("--yes", "-y", action="store_true")
     p_doc.add_argument("--max-requests", type=int, default=None)
 
-    p_wtf = subs.add_parser("wtf", help="Freeze flight recorder and explain weirdness")
-    p_wtf.add_argument("window", nargs="?", default=None, help="e.g. 2m, 5m, 120s")
-    p_wtf.add_argument("--session", default=None)
-
-    p_inc = subs.add_parser("incident", help="Professional alias for wtf")
-    p_inc.add_argument("window", nargs="?", default=None)
-    p_inc.add_argument("--session", default=None)
+    for name, help_text in (
+        ("wtf", "Freeze flight recorder and explain weirdness"),
+        ("incident", "Professional alias for wtf"),
+    ):
+        p = subs.add_parser(name, help=help_text)
+        p.add_argument("window", nargs="?", default=None, help="e.g. 2m, 5m, 120s (default 5m)")
+        p.add_argument("--session", default=None, help="current | all | <session id>")
+        save = p.add_mutually_exclusive_group()
+        save.add_argument(
+            "--save", dest="save", action="store_true", default=None, help="always save the incident"
+        )
+        save.add_argument("--no-save", dest="save", action="store_false", help="never save the incident")
 
     p_con = subs.add_parser("contribute", help="Sanitized candidate / issue draft")
     p_con.add_argument("--incident")
@@ -56,21 +60,50 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Actually submit after approval (default remains dry-run)",
     )
+    p_con.add_argument("--submit-draft", default=None, help="submit a previously previewed draft by id")
+    p_con.add_argument(
+        "--remote-dedupe",
+        action="store_true",
+        default=None,
+        help="search the target repo for similar issues (prints the terms first)",
+    )
 
     p_iss = subs.add_parser("issues", help="List local incidents + linked GitHub status")
     p_iss.add_argument("--limit", type=int, default=20)
     p_iss.add_argument("--refresh", action="store_true")
 
-    p_clear = subs.add_parser("clear-cache", help="Clear fingerprint Lite cache")
+    subs.add_parser("clear-cache", help="Clear fingerprint Lite cache")
+
+    p_prune = subs.add_parser("prune", help="Delete old local incidents/candidates/drafts")
+    p_prune.add_argument("--older-than", default=None, help="e.g. 30d (default: incident_retention_days)")
+    p_prune.add_argument("--dry-run", action="store_true")
+
+    for p in subs.choices.values():
+        p.add_argument("--json", action="store_true", help="machine-readable output (sanitized)")
 
     subparser.set_defaults(func=minefield_command)
 
 
 def minefield_command(args: argparse.Namespace) -> int:
+    from ..verdict import exit_code
     from . import dispatch
 
     result = dispatch.handle_cli(args)
-    text = result.get("text") or ""
-    if text:
-        print(text)
-    return 0 if result.get("ok", False) else (2 if result.get("blocked") else 1)
+    if getattr(args, "json", False):
+        print(to_json(result))
+    else:
+        text = result.get("text") or ""
+        if text:
+            print(text)
+    return exit_code(result)
+
+
+def to_json(result: dict) -> str:
+    """Structured result without the human text, run through the privacy sanitizer."""
+    import json
+
+    from ..privacy import sanitize_mapping
+
+    data = {k: v for k, v in result.items() if k != "text"}
+    data = json.loads(json.dumps(data, default=lambda o: getattr(o, "__dict__", str(o))))
+    return json.dumps(sanitize_mapping(data), indent=2, sort_keys=True, default=str)

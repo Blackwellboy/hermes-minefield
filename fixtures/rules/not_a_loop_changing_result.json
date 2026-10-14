@@ -1,0 +1,17 @@
+{
+  "about": "polling: same args, results change",
+  "expected": {
+    "rule": "aligned"
+  },
+  "events": [
+    {
+      "repeat": 8,
+      "type": "tool.executed",
+      "tool_name": "terminal",
+      "tool_arg_fingerprint": "date",
+      "result_fingerprint": "t{i}",
+      "session_id_hash": "s",
+      "success": true
+    }
+  ]
+}

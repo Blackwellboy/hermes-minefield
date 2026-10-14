@@ -28,6 +28,13 @@ providers:
 """
 
 
+@pytest.fixture(autouse=True)
+def no_hermes_loader(monkeypatch):
+    """Exercise the plugin's own file loader even inside a Hermes environment."""
+    monkeypatch.setitem(sys.modules, "hermes_cli.config", None)
+    monkeypatch.setitem(sys.modules, "hermes_cli.runtime_provider", None)
+
+
 @pytest.fixture()
 def no_pyyaml(monkeypatch):
     real_import = builtins.__import__

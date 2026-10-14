@@ -1,0 +1,33 @@
+{
+  "about": "3 dispatched, 3 executed, distinct",
+  "expected": {
+    "classification": "EXPECTED_BEHAVIOUR",
+    "rule": "aligned"
+  },
+  "events": [
+    {
+      "repeat": 3,
+      "each": [
+        {
+          "type": "tool.requested",
+          "tool_name": "read_file",
+          "session_id_hash": "s",
+          "extra": {
+            "tool_call_id_hash": "c{i}"
+          }
+        },
+        {
+          "type": "tool.executed",
+          "tool_name": "read_file",
+          "tool_arg_fingerprint": "a{i}",
+          "result_fingerprint": "r{i}",
+          "session_id_hash": "s",
+          "success": true,
+          "extra": {
+            "tool_call_id_hash": "c{i}"
+          }
+        }
+      ]
+    }
+  ]
+}

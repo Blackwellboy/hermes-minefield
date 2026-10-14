@@ -18,7 +18,6 @@ from hermes_minefield.recorder.events import (
 from hermes_minefield.recorder.store import (
     FlightRecorder,
     load_recent_persisted_events,
-    merge_events,
     reset_recorder_for_tests,
 )
 
@@ -262,9 +261,7 @@ def test_h_session_filter(tmp_hermes_home, rec_path):
         tool_name="t",
     )
     _write_events(rec_path, [a, b])
-    loaded = load_recent_persisted_events(
-        since_seconds=60, session_id_hash="aaa", path=rec_path, now=now
-    )
+    loaded = load_recent_persisted_events(since_seconds=60, session_id_hash="aaa", path=rec_path, now=now)
     assert [e.event_id for e in loaded] == ["sa"]
 
 
@@ -272,10 +269,8 @@ def test_i_no_persisted_quiet_window(tmp_hermes_home, rec_path):
     reset_recorder_for_tests(persist=True, path=rec_path)
     out = run_wtf(window="1m", persist=False)
     assert out["event_count"] == 0
-    assert "quiet" in out["text"].lower() or out["classification"] in {
-        "UNKNOWN",
-        "EXPECTED_BEHAVIOUR",
-    }
+    assert out["classification"] == "UNKNOWN"
+    assert out["verdict"] == "UNKNOWN"
 
 
 def test_j_secrets_absent_from_persisted(tmp_hermes_home, rec_path):

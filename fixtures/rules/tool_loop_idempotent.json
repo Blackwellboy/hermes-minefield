@@ -1,0 +1,20 @@
+{
+  "about": "6 consecutive identical read_file (same args+result)",
+  "expected": {
+    "classification": "AGENT_TOOL_LOOP",
+    "severity": "HIGH",
+    "confidence": "HIGH",
+    "rule": "tool_loop"
+  },
+  "events": [
+    {
+      "repeat": 6,
+      "type": "tool.executed",
+      "tool_name": "read_file",
+      "tool_arg_fingerprint": "a",
+      "result_fingerprint": "r",
+      "session_id_hash": "s",
+      "success": true
+    }
+  ]
+}

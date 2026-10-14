@@ -6,8 +6,9 @@ Ambiguous ownership → no recommendation; user must select.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any
 
 # Canonical allowlisted destinations (recommendation candidates only).
 REPO_HERMES = "NousResearch/hermes-agent"
@@ -53,7 +54,7 @@ AMBIGUOUS_CLASSIFICATIONS = frozenset(
 
 @dataclass(frozen=True)
 class TargetRecommendation:
-    recommended_repo: Optional[str]
+    recommended_repo: str | None
     user_selection_required: bool
     reason: str
     confidence: str  # HIGH | MEDIUM | LOW | NONE
@@ -65,9 +66,9 @@ def recommend_target_repo(
     serving_failure: bool = False,
     is_engineering_bug: bool = False,
     is_minefield_trap: bool = False,
-    kind: Optional[str] = None,
-    allowlist: Optional[Sequence[str]] = None,
-    model_suggested_repo: Optional[str] = None,
+    kind: str | None = None,
+    allowlist: Sequence[str] | None = None,
+    model_suggested_repo: str | None = None,
 ) -> TargetRecommendation:
     """Return a SAFE recommendation. Ignores hostile model_suggested_repo."""
     del model_suggested_repo  # MODEL_CANNOT_SELECT_REPO — never consulted
@@ -138,11 +139,11 @@ def recommend_target_repo(
 def resolve_contribute_target(
     *,
     artifact: Mapping[str, Any],
-    kind: Optional[str] = None,
-    explicit_repo: Optional[str] = None,
+    kind: str | None = None,
+    explicit_repo: str | None = None,
     user_selected_repo: bool = False,
-    allowlist: Optional[Sequence[str]] = None,
-    model_suggested_repo: Optional[str] = None,
+    allowlist: Sequence[str] | None = None,
+    model_suggested_repo: str | None = None,
 ) -> dict[str, Any]:
     """Resolve draft target for contribute --github.
 

@@ -1,0 +1,12 @@
+{
+  "about": "nothing happened",
+  "expected": {
+    "classification": "UNKNOWN",
+    "rule": "quiet"
+  },
+  "events": [
+    {
+      "type": "session.start"
+    }
+  ]
+}

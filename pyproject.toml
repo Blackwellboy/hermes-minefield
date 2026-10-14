@@ -4,14 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-minefield"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Standalone Hermes plugin for Model Serving Minefield diagnostics and incident analysis"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Blackwellboy" }]
 dependencies = [
-  "model-serving-minefield>=0.2,<0.3",
+  # Not on PyPI; pinned to the SHA CI tests against (see plugin.yaml).
+  "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@12822f3ec6d8600df113e773d2e588f3659f0120",
 ]
 
 [project.optional-dependencies]
@@ -21,9 +22,25 @@ dev = ["pytest>=7.0", "PyYAML>=6.0"]
 # Do not also declare hermes_agent.plugins entry points — duplicate manifests
 # caused "no register() function" warnings during dual discovery.
 
+[tool.setuptools.dynamic]
+version = { attr = "hermes_minefield.version.__version__" }
+
 [tool.setuptools.packages.find]
 include = ["hermes_minefield*"]
 
+[tool.ruff]
+target-version = "py311"
+line-length = 110
+extend-exclude = ["_deps"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["gate_a: slow multi-process Gate A scenario suite (run with -m gate_a)"]
+addopts = "-m 'not gate_a'"
+# Raised while importing Hermes internals, not by this plugin.
+filterwarnings = ["ignore:invalid escape sequence:DeprecationWarning"]
 pythonpath = ["."]

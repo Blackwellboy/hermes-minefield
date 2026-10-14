@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import time
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from ..recorder.events import RecorderEvent
 from .classify import ClassificationResult, classify, compute_signals
+from .signals import percentile
 from .store import save_incident
 from .trap_match import TrapMatchError, match_traps
 from .types import IncidentArtifact
@@ -15,16 +16,17 @@ from .types import IncidentArtifact
 def analyze_events(
     events: Sequence[RecorderEvent],
     *,
-    session_id_hash: Optional[str] = None,
-    model_fingerprint: Optional[str] = None,
-    runtime_fingerprint: Optional[str] = None,
-    stack_hint: Optional[str] = None,
-    model_hint: Optional[str] = None,
-    since_seconds: Optional[float] = None,
+    session_id_hash: str | None = None,
+    model_fingerprint: str | None = None,
+    runtime_fingerprint: str | None = None,
+    stack_hint: str | None = None,
+    model_hint: str | None = None,
+    since_seconds: float | None = None,
     persist: bool = True,
+    loop_streak_threshold: int | None = None,
 ) -> IncidentArtifact:
     signals = compute_signals(events)
-    result: ClassificationResult = classify(signals)
+    result: ClassificationResult = classify(signals, loop_streak_threshold=loop_streak_threshold)
     tool = signals.dominant_tool or "tool"
 
     trap_match_error = None
@@ -65,14 +67,28 @@ def analyze_events(
             "requested": signals.requested_by_tool,
             "executed": signals.executed_by_tool,
             "total_prepared": signals.total_prepared,
+            "total_requested": signals.total_requested,
             "total_executed": signals.total_executed,
+            "in_flight": signals.in_flight,
+            "hung": signals.hung_by_tool,
+            "undispatched": signals.undispatched,
+            "failed": signals.failed_by_tool,
+            "total_failed": signals.total_failed,
             "dominant_tool": tool,
         },
         repeated_call_counts={
             "equivalent_executed": signals.equivalent_executed,
             "dominant_equivalent": signals.equivalent_executed.get(tool, 0),
+            "longest_no_progress_streak": signals.longest_streak,
+            "streak_tool": signals.streak_tool,
+            "guard_blocks": signals.guard_blocks,
         },
-        timings={"window_seconds": signals.window_seconds},
+        timings={
+            "window_seconds": signals.window_seconds,
+            "api_responses": signals.api_responses,
+            "api_p95_ms": percentile(signals.api_latency_ms, 0.95),
+            "ttft_p95_ms": percentile(signals.api_ttft_ms, 0.95),
+        },
         errors=[],
         classification=result.classification,
         severity=result.severity,
@@ -91,25 +107,28 @@ def analyze_events(
         notes=[
             "NOT_EVERY_BUG_IS_A_MINEFIELD_TRAP",
             f"api_errors={signals.total_api_errors}",
-            *([f"trap_match_error={trap_match_error}"] if trap_match_error else []),
-        ],
+            f"rule={result.rule}",
+        ]
+        + ([f"interrupted_turns={signals.interrupted_turns}"] if signals.interrupted_turns else [])
+        + ([f"trap_match_error={trap_match_error}"] if trap_match_error else []),
     )
     if persist:
         save_incident(artifact)
     return artifact
 
 
-def render_incident(artifact: IncidentArtifact) -> str:
+def render_incident(artifact: IncidentArtifact, *, saved: bool = True) -> str:
     exec_total = artifact.actual_execution_counts.get("total_executed", 0)
-    prep_total = artifact.actual_execution_counts.get("total_prepared", 0)
     equiv = artifact.repeated_call_counts.get("dominant_equivalent", 0)
     dominant_tool = artifact.actual_execution_counts.get("dominant_tool") or ""
-    # NO_PROGRESS_STREAK approximates dominant equivalent repeats for tool-loop
-    # incidents (recorder does not yet emit Hermes guardrail warn/block counts).
-    no_progress_streak = equiv
+    streak = artifact.repeated_call_counts.get("longest_no_progress_streak", equiv)
+    blocks = artifact.repeated_call_counts.get("guard_blocks")
     trap_line = "NO"
     confirmation_line = None
-    if artifact.known_trap_matches:
+    if any(str(n).startswith("trap_match_error=") for n in artifact.notes or []):
+        # A broken Minefield contract is missing evidence, not "no match".
+        trap_line = "UNKNOWN (Minefield trap matching unavailable)"
+    elif artifact.known_trap_matches:
         m = artifact.known_trap_matches[0]
         trap_line = f"possible match {m.get('trap_id')} / {m.get('title')}"
         if m.get("confirmation_check"):
@@ -118,38 +137,37 @@ def render_incident(artifact: IncidentArtifact) -> str:
     lines = [
         "MINEFIELD INCIDENT",
         "",
-        f"ID: {artifact.incident_id}",
-        f"Observed:",
+        f"ID: {artifact.incident_id if saved else '(not saved)'}",
+        "Observed:",
         f"  {artifact.observed_symptom}",
         "",
         f"ACTUAL_EXECUTIONS={exec_total}",
         f"REPEATED_EQUIVALENT_CALLS={equiv}",
         f"DOMINANT_TOOL={dominant_tool or 'unknown'}",
-        f"NO_PROGRESS_STREAK={no_progress_streak}",
-        f"GUARD_WARNINGS=unknown",
-        f"GUARD_BLOCKS=unknown",
-        f"Actual executions: {exec_total}",
-        f"Preparations:      {prep_total}",
-        f"Repeated equivalent calls: {equiv}",
+        f"TOOL_FAILURES={artifact.actual_execution_counts.get('total_failed', 0)}",
+        f"NO_PROGRESS_STREAK={streak}",
+        "GUARD_WARNINGS=unknown",
+        f"GUARD_BLOCKS={'unknown' if blocks is None else blocks}",
         "",
-        f"Likely cause:",
+        "Likely cause:",
         f"  {artifact.likely_root_cause}",
         "",
         f"Classification: {artifact.classification}",
         f"Severity:       {artifact.severity}",
         f"Serving failure: {'YES' if artifact.serving_failure else 'NO'}",
         f"Known Minefield trap: {trap_line}",
-        *(
-            ["Top-match confirmation check:", f"  {confirmation_line}"]
-            if confirmation_line
-            else []
-        ),
+        *(["Top-match confirmation check:", f"  {confirmation_line}"] if confirmation_line else []),
         f"Engineering bug (not trap): {'YES' if artifact.is_engineering_bug and not artifact.is_minefield_trap else 'NO'}",
         "",
-        f"Recommendation:",
+        "Recommendation:",
         f"  {artifact.recommended_action}",
         "",
-        "Create local bug candidate?  (use: /minefield contribute)",
-        "Draft GitHub issue?          (use: /minefield contribute --github)",
     ]
+    if saved:
+        lines += [
+            "Create local bug candidate?  (use: /minefield contribute)",
+            "Draft GitHub issue?          (use: /minefield contribute --github)",
+        ]
+    else:
+        lines.append("(not saved — quiet or normal window; use --save to keep it)")
     return "\n".join(lines)

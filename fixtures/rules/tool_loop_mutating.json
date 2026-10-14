@@ -1,0 +1,19 @@
+{
+  "about": "6 identical terminal calls, same result: loop, lower confidence",
+  "expected": {
+    "classification": "AGENT_TOOL_LOOP",
+    "confidence": "MEDIUM",
+    "rule": "tool_loop"
+  },
+  "events": [
+    {
+      "repeat": 6,
+      "type": "tool.executed",
+      "tool_name": "terminal",
+      "tool_arg_fingerprint": "cmd",
+      "result_fingerprint": "out",
+      "session_id_hash": "s",
+      "success": true
+    }
+  ]
+}

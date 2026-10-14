@@ -1,0 +1,344 @@
+{
+  "_source": "hermes-agent@d350422b hooks.md + fire sites (model_tools.py, hermes_cli/plugins.py, agent/turn_*.py, agent/api_request_hooks.py, agent/conversation_loop.py, gateway/run_agent_cache.py)",
+  "_about": "Contract fixture: realistic kwargs for every hook the plugin registers. 'reads' lists the keys the plugin depends on; tests/test_hermes_contract.py fails if a Hermes version stops sending any of them. Strings containing SENTINEL must never appear in anything the plugin records. 'optional_reads' may be absent on older supported Hermes versions (the plugin must then record UNKNOWN, never a default); 'optional_hook' may have no fire site at all.",
+  "hooks": {
+    "pre_tool_call": {
+      "reads": [
+        "tool_name",
+        "args",
+        "session_id",
+        "task_id",
+        "tool_call_id",
+        "turn_id"
+      ],
+      "payload": {
+        "tool_name": "read_file",
+        "args": {
+          "path": "SENTINEL_ARG_VALUE/a.py"
+        },
+        "task_id": "task-1",
+        "session_id": "sess-1",
+        "tool_call_id": "call-1",
+        "turn_id": "turn-1",
+        "api_request_id": "req-1",
+        "middleware_trace": []
+      }
+    },
+    "post_tool_call": {
+      "reads": [
+        "tool_name",
+        "args",
+        "result",
+        "session_id",
+        "task_id",
+        "tool_call_id",
+        "turn_id",
+        "duration_ms",
+        "status",
+        "error_type"
+      ],
+      "payload": {
+        "tool_name": "read_file",
+        "args": {
+          "path": "SENTINEL_ARG_VALUE/a.py"
+        },
+        "result": "{\"content\": \"SENTINEL_RESULT\"}",
+        "task_id": "task-1",
+        "session_id": "sess-1",
+        "tool_call_id": "call-1",
+        "turn_id": "turn-1",
+        "api_request_id": "req-1",
+        "duration_ms": 12,
+        "status": "ok",
+        "error_type": null,
+        "error_message": null,
+        "middleware_trace": []
+      }
+    },
+    "post_tool_call_error": {
+      "hook": "post_tool_call",
+      "reads": [],
+      "payload": {
+        "tool_name": "terminal",
+        "args": {
+          "command": "SENTINEL_ARG_VALUE"
+        },
+        "result": "{\"error\": \"SENTINEL_ERRMSG\"}",
+        "task_id": "task-1",
+        "session_id": "sess-1",
+        "tool_call_id": "call-2",
+        "turn_id": "turn-1",
+        "api_request_id": "req-1",
+        "duration_ms": 40,
+        "status": "error",
+        "error_type": "tool_error",
+        "error_message": "SENTINEL_ERRMSG",
+        "middleware_trace": []
+      }
+    },
+    "pre_llm_call": {
+      "reads": [
+        "session_id",
+        "model"
+      ],
+      "payload": {
+        "session_id": "sess-1",
+        "task_id": "task-1",
+        "turn_id": "turn-1",
+        "user_message": "SENTINEL_USER_MESSAGE",
+        "conversation_history": [
+          {
+            "role": "user",
+            "content": "SENTINEL_HISTORY"
+          }
+        ],
+        "is_first_turn": true,
+        "model": "test-model",
+        "platform": "cli",
+        "parent_session_id": null,
+        "sender_id": null
+      }
+    },
+    "post_llm_call": {
+      "reads": [
+        "session_id",
+        "assistant_response"
+      ],
+      "payload": {
+        "session_id": "sess-1",
+        "task_id": "task-1",
+        "turn_id": "turn-1",
+        "user_message": "SENTINEL_USER_MESSAGE",
+        "assistant_response": "SENTINEL_ASSISTANT hello world",
+        "conversation_history": [
+          {
+            "role": "user",
+            "content": "SENTINEL_HISTORY"
+          }
+        ],
+        "model": "test-model",
+        "platform": "cli"
+      }
+    },
+    "pre_api_request": {
+      "reads": [
+        "session_id",
+        "task_id",
+        "api_request_id",
+        "model",
+        "started_at"
+      ],
+      "payload": {
+        "task_id": "task-1",
+        "turn_id": "turn-1",
+        "api_request_id": "req-1",
+        "session_id": "sess-1",
+        "user_message": "SENTINEL_USER_MESSAGE",
+        "conversation_history": [
+          {
+            "role": "user",
+            "content": "SENTINEL_HISTORY"
+          }
+        ],
+        "platform": "cli",
+        "model": "test-model",
+        "provider": "custom",
+        "base_url": "http://SENTINEL-HOST.internal:8007/v1",
+        "api_mode": "chat_completions",
+        "api_call_count": 1,
+        "retry_count": 0,
+        "request_messages": [
+          {
+            "role": "user",
+            "content": "SENTINEL_HISTORY"
+          }
+        ],
+        "system_prompt": "SENTINEL_SYSTEM_PROMPT",
+        "message_count": 2,
+        "tool_count": 5,
+        "approx_input_tokens": 1200,
+        "request_char_count": 4800,
+        "max_tokens": 4096,
+        "started_at": 1000.0,
+        "middleware_trace": [],
+        "request": {
+          "method": "POST",
+          "body": {
+            "messages": [
+              {
+                "content": "SENTINEL_HISTORY"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "post_api_request": {
+      "reads": [
+        "session_id",
+        "api_request_id",
+        "api_duration",
+        "started_at",
+        "finish_reason",
+        "response",
+        "assistant_content_chars",
+        "assistant_tool_call_count"
+      ],
+      "payload": {
+        "task_id": "task-1",
+        "turn_id": "turn-1",
+        "api_request_id": "req-1",
+        "session_id": "sess-1",
+        "platform": "cli",
+        "model": "test-model",
+        "provider": "custom",
+        "base_url": "http://SENTINEL-HOST.internal:8007/v1",
+        "api_mode": "chat_completions",
+        "api_call_count": 1,
+        "api_duration": 1.5,
+        "started_at": 1000.0,
+        "ended_at": 1001.5,
+        "first_chunk_at": 1000.25,
+        "finish_reason": "tool_calls",
+        "message_count": 2,
+        "response_model": "test-model",
+        "response": {
+          "model": "test-model",
+          "finish_reason": "tool_calls",
+          "assistant_message": {
+            "role": "assistant",
+            "content": "SENTINEL_ASSISTANT",
+            "tool_calls": [
+              {
+                "id": "call-1",
+                "type": "function",
+                "function": {
+                  "name": "read_file",
+                  "arguments": "{\"path\": \"SENTINEL_ARG_VALUE\"}"
+                }
+              },
+              {
+                "id": "call-2",
+                "type": "function",
+                "function": {
+                  "name": "terminal",
+                  "arguments": "{\"command\": \"SENTINEL_ARG_VALUE\"}"
+                }
+              }
+            ]
+          },
+          "usage": {
+            "prompt_tokens": 1200,
+            "completion_tokens": 40
+          }
+        },
+        "usage": {
+          "prompt_tokens": 1200,
+          "completion_tokens": 40
+        },
+        "assistant_message": {
+          "content": "SENTINEL_ASSISTANT"
+        },
+        "assistant_content_chars": 18,
+        "assistant_tool_call_count": 2,
+        "moa_references": null
+      },
+      "optional_reads": [
+        "first_chunk_at"
+      ]
+    },
+    "api_request_error": {
+      "reads": [
+        "session_id",
+        "api_request_id",
+        "api_duration",
+        "status_code",
+        "retryable",
+        "retry_count",
+        "error"
+      ],
+      "payload": {
+        "task_id": "task-1",
+        "turn_id": "turn-1",
+        "api_request_id": "req-2",
+        "session_id": "sess-1",
+        "platform": "cli",
+        "model": "test-model",
+        "provider": "custom",
+        "base_url": "http://SENTINEL-HOST.internal:8007/v1",
+        "api_mode": "chat_completions",
+        "api_call_count": 2,
+        "api_duration": 0.4,
+        "started_at": 1002.0,
+        "ended_at": 1002.4,
+        "status_code": 503,
+        "retry_count": 1,
+        "max_retries": 3,
+        "retryable": true,
+        "reason": "server_error",
+        "error": {
+          "type": "APIStatusError",
+          "message": "SENTINEL_ERRMSG upstream said no"
+        },
+        "request": {
+          "method": "POST",
+          "body": {
+            "messages": [
+              {
+                "content": "SENTINEL_HISTORY"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "on_session_start": {
+      "reads": [
+        "session_id"
+      ],
+      "payload": {
+        "session_id": "sess-1",
+        "model": "test-model",
+        "platform": "cli"
+      }
+    },
+    "on_session_end": {
+      "reads": [
+        "session_id",
+        "completed",
+        "interrupted"
+      ],
+      "payload": {
+        "session_id": "sess-1",
+        "task_id": "task-1",
+        "turn_id": "turn-1",
+        "completed": true,
+        "failed": false,
+        "interrupted": false,
+        "turn_exit_reason": "final_response",
+        "model": "test-model",
+        "platform": "cli"
+      }
+    },
+    "on_session_finalize": {
+      "reads": [],
+      "static_check": false,
+      "payload": {
+        "session_id": "sess-1",
+        "platform": "cli"
+      }
+    },
+    "agent_loop_stopped": {
+      "reads": [
+        "reason"
+      ],
+      "payload": {
+        "session_key": "SENTINEL_SESSION_KEY",
+        "platform": "telegram",
+        "reason": "user_stop",
+        "invalidation_reason": null
+      },
+      "optional_hook": true
+    }
+  }
+}

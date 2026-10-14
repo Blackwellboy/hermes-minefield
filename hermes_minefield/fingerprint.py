@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional
+from typing import Any
 
 from .version import PROBE_PLAN_VERSION, __version__
 
@@ -26,16 +27,16 @@ def _h(value: Any) -> str:
 
 def build_fingerprint(
     *,
-    model: Optional[str] = None,
-    base_url: Optional[str] = None,
-    runtime: Optional[str] = None,
-    runtime_version: Optional[str] = None,
-    quant: Optional[str] = None,
-    chat_template_hash: Optional[str] = None,
-    reasoning_mode: Optional[str] = None,
-    tool_mode: Optional[str] = None,
-    generation_settings: Optional[Mapping[str, Any]] = None,
-    extra: Optional[Mapping[str, Any]] = None,
+    model: str | None = None,
+    base_url: str | None = None,
+    runtime: str | None = None,
+    runtime_version: str | None = None,
+    quant: str | None = None,
+    chat_template_hash: str | None = None,
+    reasoning_mode: str | None = None,
+    tool_mode: str | None = None,
+    generation_settings: Mapping[str, Any] | None = None,
+    extra: Mapping[str, Any] | None = None,
 ) -> Fingerprint:
     # Strip hostnames from base_url for privacy — keep only scheme+path shape hint
     url_shape = None
@@ -73,7 +74,7 @@ def build_fingerprint(
 
 def fingerprint_for_hermes_target(
     *,
-    model: Optional[str],
+    model: str | None,
     base_url: str,
     reasoning_mode: str = "from_config",
 ) -> Fingerprint:

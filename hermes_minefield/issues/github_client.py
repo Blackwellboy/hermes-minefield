@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
+import urllib.parse
 import urllib.request
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence
+from typing import Any
 
 from .approval import ApprovalDecision, evaluate_approval
 from .dedupe import map_github_state
@@ -20,8 +23,8 @@ from .dedupe import map_github_state
 @dataclass
 class SubmitResult:
     submitted: bool
-    url: Optional[str]
-    error: Optional[str]
+    url: str | None
+    error: str | None
     dry_run: bool
 
 
@@ -38,8 +41,7 @@ def assert_repo_allowed(
         return
     if repo not in set(allowlist):
         raise PermissionError(
-            f"ARBITRARY_REPO_SUBMISSION=BLOCKED: {repo} not in allowlist "
-            f"and not explicitly selected by user"
+            f"ARBITRARY_REPO_SUBMISSION=BLOCKED: {repo} not in allowlist and not explicitly selected by user"
         )
 
 
@@ -50,11 +52,11 @@ def submit_issue(
     body: str,
     allowlist: Sequence[str],
     user_selected_repo: bool,
-    user_reply: Optional[str] = None,
+    user_reply: str | None = None,
     cli_approve: bool = False,
     from_model: bool = False,
     dry_run: bool = True,
-    token: Optional[str] = None,
+    token: str | None = None,
 ) -> SubmitResult:
     assert_repo_allowed(repo, allowlist=allowlist, user_selected=user_selected_repo)
     decision: ApprovalDecision = evaluate_approval(
@@ -97,8 +99,8 @@ def refresh_issue_status(
     *,
     repo: str,
     number: int,
-    token: Optional[str] = None,
-    linked_resolution: Optional[str] = None,
+    token: str | None = None,
+    linked_resolution: str | None = None,
 ) -> dict[str, Any]:
     tok = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     url = f"https://api.github.com/repos/{repo}/issues/{int(number)}"
@@ -120,3 +122,60 @@ def refresh_issue_status(
         }
     except Exception as e:
         return {"ok": False, "error": type(e).__name__, "status": "UNKNOWN"}
+
+
+_STOP = frozenset(
+    {"with", "that", "this", "from", "have", "were", "into", "calls", "events", "window", "minefield"}
+)
+
+
+def dedupe_terms(title: str, *, limit: int = 5) -> list[str]:
+    """Search terms derived from an already-sanitized title (alnum tokens, >= 4 chars)."""
+    out: list[str] = []
+    for tok in re.findall(r"[A-Za-z][A-Za-z0-9_]{3,}", title or ""):
+        t = tok.lower()
+        if t in _STOP or t in out or t.startswith("redacted"):
+            continue
+        out.append(t)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def search_issues(
+    *, repo: str, terms: Sequence[str], token: str | None = None, timeout: float = 10.0
+) -> dict[str, Any]:
+    """Read-only GitHub issue search. Sends only ``repo`` and ``terms``. Never raises."""
+    if not terms:
+        return {"ok": False, "error": "no_terms", "items": []}
+    q = f"repo:{repo} is:issue in:title " + " ".join(terms)
+    url = "https://api.github.com/search/issues?per_page=3&q=" + urllib.parse.quote(q)
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "hermes-minefield"}
+    tok = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if tok:
+        headers["Authorization"] = f"Bearer {tok}"
+    try:
+        req = urllib.request.Request(url, headers=headers, method="GET")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        items = [
+            {
+                "number": it.get("number"),
+                "title": str(it.get("title") or "")[:120],
+                "state": it.get("state"),
+                "html_url": it.get("html_url"),
+            }
+            for it in (data.get("items") or [])[:3]
+            if isinstance(it, dict)
+        ]
+        return {"ok": True, "items": items}
+    except Exception as e:
+        return {"ok": False, "error": type(e).__name__, "items": []}
+
+
+_ISSUE_URL_RE = re.compile(r"^https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/issues/(\d+)$")
+
+
+def parse_issue_url(url: str | None) -> tuple[str, int] | None:
+    m = _ISSUE_URL_RE.match(url or "")
+    return (m.group(1), int(m.group(2))) if m else None

@@ -1,0 +1,14 @@
+{
+  "about": "model answered, no tools, no errors",
+  "expected": {
+    "classification": "EXPECTED_BEHAVIOUR",
+    "rule": "aligned"
+  },
+  "events": [
+    {
+      "repeat": 2,
+      "type": "api.response",
+      "wall_ms": 1200.0
+    }
+  ]
+}

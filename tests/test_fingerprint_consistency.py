@@ -32,11 +32,12 @@ def test_status_without_reasoning_mode_diverged():
 
 
 def test_status_and_check_same_key(tmp_hermes_home, monkeypatch):
+    import time
+
+    from hermes_minefield.cache import CacheEntry, put_entry
     from hermes_minefield.commands.check import run_check
     from hermes_minefield.commands.status import run_status
-    from hermes_minefield.cache import CacheEntry, put_entry
     from hermes_minefield.fingerprint import fingerprint_for_hermes_target
-    import time
 
     (tmp_hermes_home / "config.yaml").write_text(
         "model:\n  default: test-model\n  base_url: http://127.0.0.1:8007/v1\n",

@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import time
 
 from hermes_minefield.commands.dispatch import handle_slash
 from hermes_minefield.incident.analyze import analyze_events
-from hermes_minefield.recorder.events import RecorderEvent, TOOL_EXECUTED, TOOL_PREPARED
-from hermes_minefield.recorder.store import get_recorder
+from hermes_minefield.recorder.events import TOOL_EXECUTED, TOOL_PREPARED, RecorderEvent
 
 
 def test_slash_help():
@@ -18,16 +16,9 @@ def test_slash_help():
 
 
 def test_slash_status(tmp_hermes_home, monkeypatch):
-    # Provide minimal hermes config so status doesn't crash
-    cfg = {
-        "model": {
-            "default": "test-model",
-            "base_url": "http://127.0.0.1:9/v1",
-            "provider": "local",
-        }
-    }
+    # Minimal hermes config so status can resolve a target
     (tmp_hermes_home / "config.yaml").write_text(
-        __import__("yaml").dump(cfg) if False else "model:\n  default: test\n  base_url: http://127.0.0.1:9/v1\n",
+        "model:\n  default: test\n  base_url: http://127.0.0.1:9/v1\n",
         encoding="utf-8",
     )
     text = handle_slash("status")
@@ -58,12 +49,13 @@ def test_slash_wtf_with_injected_events(tmp_hermes_home, fresh_recorder):
     # Ensure get_recorder returns the fresh one
     text = handle_slash("wtf 2m")
     assert "MINEFIELD INCIDENT" in text
-    assert "HERMES_UI_ORCHESTRATION" in text or "Actual executions" in text
+    assert "Classification: HERMES_UI_ORCHESTRATION" in text
 
 
 def test_incident_alias(tmp_hermes_home, fresh_recorder):
     text = handle_slash("incident 1m")
-    assert "MINEFIELD INCIDENT" in text or "Minefield" in text
+    assert "MINEFIELD INCIDENT" in text
+    assert "Verdict: UNKNOWN" in text  # empty window is never clean
 
 
 def test_contribute_and_issues(tmp_hermes_home):
@@ -77,9 +69,10 @@ def test_contribute_and_issues(tmp_hermes_home):
     art = analyze_events(events, persist=True)
     text = handle_slash(f"contribute --incident {art.incident_id}")
     assert "candidate" in text.lower()
-    assert "OFFICIAL" in text or "trap #" in text.lower() or "none" in text.lower()
+    assert "trap #:    (none — assigned only after maintainer acceptance)" in text
     issues = handle_slash("issues")
-    assert art.incident_id in issues or "MINEFIELD ISSUES" in issues
+    assert issues.startswith("MINEFIELD ISSUES")
+    assert art.incident_id in issues
 
 
 def test_doctor_guard_without_yes(tmp_hermes_home, monkeypatch):
@@ -88,9 +81,9 @@ def test_doctor_guard_without_yes(tmp_hermes_home, monkeypatch):
     # Force unknown concurrency path
     monkeypatch.setattr(
         "hermes_minefield.commands.doctor.probe_concurrency",
-        lambda url: __import__("hermes_minefield.concurrency", fromlist=["ConcurrencyInfo"]).ConcurrencyInfo(
-            None, False, "unknown", "UNKNOWN"
-        ),
+        lambda url, **kw: __import__(
+            "hermes_minefield.concurrency", fromlist=["ConcurrencyInfo"]
+        ).ConcurrencyInfo(None, False, "unknown", "UNKNOWN"),
     )
     (tmp_hermes_home / "config.yaml").write_text(
         "model:\n  default: t\n  base_url: http://127.0.0.1:9/v1\n",
@@ -98,4 +91,6 @@ def test_doctor_guard_without_yes(tmp_hermes_home, monkeypatch):
     )
     out = run_doctor(yes=False)
     assert out["blocked"] is True
-    assert "UNKNOWN" in out["text"] or "monopolize" in out["text"].lower() or "confirm" in out["text"].lower()
+    assert out["verdict"] == "UNKNOWN"
+    assert out["requests_executed"] == 0
+    assert "Concurrency is UNKNOWN" in out["text"]

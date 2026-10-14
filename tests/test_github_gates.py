@@ -9,7 +9,6 @@ from hermes_minefield.issues.draft import build_issue_draft
 from hermes_minefield.issues.github_client import assert_repo_allowed, submit_issue
 from hermes_minefield.privacy import looks_like_approval
 
-
 ALLOW = ("Blackwellboy/model-serving-minefield", "NousResearch/hermes-agent")
 
 
@@ -89,7 +88,7 @@ def test_draft_redacts_secrets(tmp_hermes_home):
     body = draft.body
     assert "secretpass" not in body
     assert "sk-should-not-appear" not in body
-    assert "10.0.0.5" not in body or "[REDACTED" in body
+    assert "10.0.0.5" not in body
 
 
 def test_closed_not_assumed_fixed():

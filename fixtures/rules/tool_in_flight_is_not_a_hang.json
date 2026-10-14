@@ -1,0 +1,18 @@
+{
+  "about": "dispatched 10s ago, still running: normal",
+  "expected": {
+    "classification": "EXPECTED_BEHAVIOUR",
+    "rule": "aligned"
+  },
+  "events": [
+    {
+      "type": "tool.requested",
+      "tool_name": "terminal",
+      "session_id_hash": "s",
+      "extra": {
+        "tool_call_id_hash": "c1"
+      },
+      "age_s": 10
+    }
+  ]
+}

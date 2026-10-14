@@ -1,0 +1,16 @@
+{
+  "about": "p95 latency > 60s over >=3 responses",
+  "expected": {
+    "classification": "PERFORMANCE_CONTENTION",
+    "severity": "LOW",
+    "rule": "slow_model"
+  },
+  "events": [
+    {
+      "repeat": 3,
+      "type": "api.response",
+      "wall_ms": 90000.0,
+      "ttft_ms": 1000.0
+    }
+  ]
+}

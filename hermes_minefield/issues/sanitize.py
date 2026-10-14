@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from ..privacy import redact_text, sanitize_mapping, strip_url_credentials
-
 
 FORBIDDEN_KEYS = {
     "authorization",

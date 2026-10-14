@@ -1,0 +1,17 @@
+{
+  "about": "process_manage is a legitimate poller (Hermes never flags it)",
+  "expected": {
+    "rule": "aligned"
+  },
+  "events": [
+    {
+      "repeat": 8,
+      "type": "tool.executed",
+      "tool_name": "process_manage",
+      "tool_arg_fingerprint": "poll",
+      "result_fingerprint": "running",
+      "session_id_hash": "s",
+      "success": true
+    }
+  ]
+}

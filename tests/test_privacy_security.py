@@ -6,8 +6,9 @@ from hermes_minefield.privacy import redact_text, sanitize_mapping
 
 def test_no_trap_prose_execution_import():
     # Guard: contribute/analyze never import minefield trap markdown as code.
-    import hermes_minefield.incident.trap_match as tm
     import inspect
+
+    import hermes_minefield.incident.trap_match as tm
 
     src = inspect.getsource(tm)
     assert "exec(" not in src

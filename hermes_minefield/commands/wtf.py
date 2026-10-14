@@ -1,17 +1,19 @@
-""" /minefield wtf — freeze recorder + classify incident."""
+"""/minefield wtf — freeze recorder + classify incident."""
 
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
+from .. import verdict as V
+from ..config import load_plugin_config
 from ..incident.analyze import analyze_events, render_incident
+from ..incident.store import save_incident
 from ..privacy import stable_hash
 from ..recorder.store import get_recorder
-from ..target import resolve_target
+from ..target import local_target_hints
 
-
-_DURATION_RE = re.compile(r"^(\d+)\s*([smh])?$", re.I)
+_DURATION_RE = re.compile(r"^(\d+)\s*([smhd])?$", re.I)
 
 _STACK_ALIASES = {
     "vllm": "vllm",
@@ -24,13 +26,13 @@ _STACK_ALIASES = {
 }
 
 
-def _stack_hint(provider: Optional[str]) -> Optional[str]:
+def _stack_hint(provider: str | None) -> str | None:
     if not provider:
         return None
     return _STACK_ALIASES.get(provider.strip().lower())
 
 
-def parse_window(raw: Optional[str], default_seconds: float = 300.0) -> float:
+def parse_window(raw: str | None, default_seconds: float = 300.0) -> float:
     if not raw:
         return default_seconds
     raw = raw.strip()
@@ -46,34 +48,68 @@ def parse_window(raw: Optional[str], default_seconds: float = 300.0) -> float:
         return float(n * 60)
     if unit == "h":
         return float(n * 3600)
+    if unit == "d":
+        return float(n * 86400)
     return float(n)
+
+
+def incident_verdict(classification: str, event_count: int, *, truncated: bool = False) -> tuple[str, str]:
+    """PASS only for aligned, complete evidence; no evidence is UNKNOWN, never clean."""
+    if event_count == 0:
+        return V.UNKNOWN, (
+            "no recorder events in this window — nothing happened, or the recorder is not "
+            "running in the Hermes process (is the plugin enabled?)"
+        )
+    if classification == "UNKNOWN":
+        return V.UNKNOWN, "events recorded, but no classification fits them"
+    if classification == "EXPECTED_BEHAVIOUR":
+        if truncated:
+            return V.UNKNOWN, "looks normal, but the window hit recorder_max_events so evidence is incomplete"
+        return V.PASS, "recorded activity looks normal"
+    note = " (window truncated at recorder_max_events)" if truncated else ""
+    return V.FAIL, f"anomaly: {classification}{note}"
+
+
+def should_skip_saving(classification: str, severity: str) -> bool:
+    """Quiet or normal windows are not incidents; don't clutter `issues` with them."""
+    return classification in {"UNKNOWN", "EXPECTED_BEHAVIOUR"} and severity == "LOW"
 
 
 def run_wtf(
     *,
-    window: Optional[str] = None,
-    session: Optional[str] = None,
+    window: str | None = None,
+    session: str | None = None,
+    save: bool | None = None,
     persist: bool = True,
 ) -> dict[str, Any]:
+    """Freeze + classify. ``save``: True/False forces; None saves only anomalies.
+    ``persist=False`` (tests/legacy) never saves."""
     since = parse_window(window, default_seconds=300.0)
-    sid_hash = None
-    if session and session not in {"current", "all"}:
-        sid_hash = stable_hash(session, n=16)
-
     # Matching context is transient. Raw model/provider values are not added
     # to the persisted incident artifact; only the existing privacy-safe
-    # fingerprints remain durable.
+    # fingerprints remain durable. Read from local config only: wtf never
+    # touches the network (Hermes's runtime resolution can).
     stack_hint = None
     model_hint = None
     try:
-        target = resolve_target()
-        model_hint = target.model
-        stack_hint = _stack_hint(target.provider)
+        hints = local_target_hints()
+        model_hint = hints.model
+        stack_hint = _stack_hint(hints.provider)
     except Exception:
         pass
 
     rec = get_recorder()
-    intro = f"yeah, that looked weird. freezing the last {since:.0f} seconds..."
+    session = (session or "current").strip()
+    if session == "all":
+        sid_hash, scope = None, "all sessions"
+    elif session == "current":
+        sid_hash = rec.current_session_hash()
+        scope = f"current session ({sid_hash[:8]}…)" if sid_hash else "all sessions (no session seen yet)"
+    else:
+        sid_hash = stable_hash(session, n=16)
+        scope = f"session {sid_hash[:8]}…"
+
+    intro = f"yeah, that looked weird. freezing the last {since:.0f} seconds...\nscope: {scope}"
     frozen = rec.freeze_detailed(since_seconds=since, session_id_hash=sid_hash)
     events = frozen.events
     artifact = analyze_events(
@@ -82,14 +118,28 @@ def run_wtf(
         stack_hint=stack_hint,
         model_hint=model_hint,
         since_seconds=since,
-        persist=persist,
+        persist=False,
+        loop_streak_threshold=load_plugin_config().loop_streak_threshold,
     )
+    truncated = len(events) >= rec.max_events
+    verdict, reason = incident_verdict(artifact.classification, len(events), truncated=truncated)
+    if not persist:
+        should_save = False
+    elif save is None:
+        should_save = not should_skip_saving(artifact.classification, artifact.severity)
+    else:
+        should_save = bool(save)
+    if should_save:
+        save_incident(artifact)
     # Concise UX; sources available in structured result for debug/tests.
-    body = render_incident(artifact)
+    body = render_incident(artifact, saved=should_save)
     return {
         "ok": True,
-        "text": f"Minefield:\n{intro}\n\n{body}",
-        "incident_id": artifact.incident_id,
+        "verdict": verdict,
+        "text": f"Minefield:\n{intro}\n\n{body}\n\n{V.line(verdict, reason)}",
+        "incident_id": artifact.incident_id if should_save else None,
+        "saved": should_save,
+        "scope": scope,
         "classification": artifact.classification,
         "severity": artifact.severity,
         "artifact": artifact.to_dict(),

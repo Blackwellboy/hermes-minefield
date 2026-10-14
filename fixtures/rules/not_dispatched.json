@@ -1,0 +1,37 @@
+{
+  "about": "model emitted 6 tool calls, only 1 dispatched (by call id)",
+  "expected": {
+    "classification": "HERMES_UI_ORCHESTRATION",
+    "rule": "not_dispatched"
+  },
+  "events": [
+    {
+      "repeat": 6,
+      "type": "tool.prepared",
+      "tool_name": "patch",
+      "extra": {
+        "phase": "post_api_request",
+        "tool_call_id_hash": "p{i}"
+      }
+    },
+    {
+      "type": "tool.requested",
+      "tool_name": "patch",
+      "session_id_hash": "s",
+      "extra": {
+        "tool_call_id_hash": "p0"
+      }
+    },
+    {
+      "type": "tool.executed",
+      "tool_name": "patch",
+      "tool_arg_fingerprint": "x",
+      "result_fingerprint": "ok",
+      "session_id_hash": "s",
+      "success": true,
+      "extra": {
+        "tool_call_id_hash": "p0"
+      }
+    }
+  ]
+}

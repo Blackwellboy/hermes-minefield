@@ -1,0 +1,15 @@
+{
+  "about": "any 401/403 from the model endpoint",
+  "expected": {
+    "classification": "CONFIGURATION_ERROR",
+    "severity": "HIGH",
+    "rule": "auth_failure"
+  },
+  "events": [
+    {
+      "type": "api.error",
+      "http_status": 401,
+      "error_class": "AuthenticationError"
+    }
+  ]
+}
