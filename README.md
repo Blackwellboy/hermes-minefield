@@ -6,13 +6,26 @@ Minefield stays framework-neutral. This plugin is the Hermes-specific adapter:
 
 ```
 model-serving-minefield   registry, Doctor, traps, match_symptom (framework-neutral, 0.2.x)
-          ↑
+          â†‘
 hermes-minefield          check / doctor adapter, flight recorder, wtf, contribution workflow
-          ↑
+          â†‘
 Hermes
 ```
 
-> **Status: experimental (0.2.0).** 0.1.x read the wrong Hermes hook arguments and could report the opposite of what happened. 0.2.0 fixes that and is tested against real Hermes processes on 0.21.0–0.21.5. See [CHANGELOG.md](CHANGELOG.md) and [docs/IMPROVEMENT_PLAN.md](docs/IMPROVEMENT_PLAN.md).
+> **Integration draft â€” not OFFLINE_BETA_READY.** This branch adds native catalogue/preview surfaces, bounded fixture execution, and a contribution reference service. Native approval, execution/progress and consent activation are incomplete. Current Hermes v0.21.7 loader/validator and real SDK source component tests pass; this is not full Electron or live-model qualification. See [implementation status](docs/integration/IMPLEMENTATION_STATUS.md) and [acceptance evidence](docs/integration/ACCEPTANCE_MATRIX.md). Earlier 0.2.0 compatibility results do not certify this branch.
+
+The shared engine is pinned to the unmerged bounded-execution candidate
+`6c75e3097832419fb224a918b4d285f16f5bfb62`. Native `/minefield` offers Home,
+checks, preview, privacy information and back/cancel. No target is discovered on
+opening it. Desktop uses the actual SDK pane and plugin backend. Privileged
+controls remain unavailable until the owner-event bridge is verified. Automatic
+contributions are implemented and tested against a loopback receiver but are not
+wired to production host hooks or a public destination. Read the
+[privacy disclosure](docs/integration/PRIVACY.md) before reviewing that service.
+
+Build a review zip with `python scripts/package_unified.py <output.zip>`. The zip
+contains agent, Desktop and backend halves; the Python wheel contains agent code
+and skill resources only. Do not install this draft into an active Hermes profile.
 
 ## The integrity rule
 
@@ -43,21 +56,21 @@ Every diagnostic result carries an explicit **verdict**:
 
 Every command accepts `--json` for machine-readable output, which goes through the privacy sanitizer. `/minefield <cmd> -h` shows help in chat.
 
-`/minefield …` is a Hermes slash command: type it in a Hermes session. From a shell, use `hermes minefield …`. There is no `/minefield-doctor`.
+`/minefield â€¦` is a Hermes slash command: type it in a Hermes session. From a shell, use `hermes minefield â€¦`. There is no `/minefield-doctor`.
 
 ### What `wtf` detects
 
 The rules are evaluated in priority order (details in [docs/CLASSIFICATION.md](docs/CLASSIFICATION.md)):
 
-- 401/403 from the model endpoint → `CONFIGURATION_ERROR`
-- 429 storm → `PERFORMANCE_CONTENTION`
-- 5xx / connection-error storm → `MODEL_SERVER_BUG`
-- a tool dispatched more than 2 minutes ago that never finished → `TOOL_BUG` (hang)
-- consecutive identical calls with the **same arguments and the same result**, ≥ 5 in a row → `AGENT_TOOL_LOOP`
-- one tool failing repeatedly → `TOOL_BUG`
-- model-emitted tool calls that were never dispatched → `HERMES_UI_ORCHESTRATION`
-- very slow responses (p95 latency or time-to-first-token) → `PERFORMANCE_CONTENTION`
-- nothing happened → `UNKNOWN`; everything lined up → `EXPECTED_BEHAVIOUR` (`PASS`)
+- 401/403 from the model endpoint â†’ `CONFIGURATION_ERROR`
+- 429 storm â†’ `PERFORMANCE_CONTENTION`
+- 5xx / connection-error storm â†’ `MODEL_SERVER_BUG`
+- a tool dispatched more than 2 minutes ago that never finished â†’ `TOOL_BUG` (hang)
+- consecutive identical calls with the **same arguments and the same result**, â‰¥ 5 in a row â†’ `AGENT_TOOL_LOOP`
+- one tool failing repeatedly â†’ `TOOL_BUG`
+- model-emitted tool calls that were never dispatched â†’ `HERMES_UI_ORCHESTRATION`
+- very slow responses (p95 latency or time-to-first-token) â†’ `PERFORMANCE_CONTENTION`
+- nothing happened â†’ `UNKNOWN`; everything lined up â†’ `EXPECTED_BEHAVIOUR` (`PASS`)
 
 Loop detection mirrors Hermes's own tool-loop guardrails: polling tools such as `process_manage` are exempt, and repeated calls whose results change count as progress.
 
@@ -67,7 +80,7 @@ Requires Hermes `>=0.21,<0.22`, the range CI proves (see "Compatibility" below).
 
 ```bash
 # 1) Minefield (not on PyPI) at the version CI tests against
-pip install "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@12822f3ec6d8600df113e773d2e588f3659f0120"
+pip install "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@6c75e3097832419fb224a918b4d285f16f5bfb62"
 
 # 2) The plugin, pinned to a release commit
 hermes plugins install Blackwellboy/hermes-minefield --ref <release-sha> --enable
@@ -96,7 +109,7 @@ plugins:
         recorder_retention_seconds: 600
         recorder_max_events: 5000
         recorder_max_bytes: 8388608
-        fingerprint_cache_ttl_days: 30  # older Lite results are stale → UNKNOWN
+        fingerprint_cache_ttl_days: 30  # older Lite results are stale â†’ UNKNOWN
         incident_retention_days: 90     # default for `prune`
         loop_streak_threshold: 5
         repo_allowlist: [Blackwellboy/model-serving-minefield, NousResearch/hermes-agent, ggerganov/llama.cpp]
@@ -104,10 +117,10 @@ plugins:
         remote_dedupe: false            # search GitHub for duplicates while drafting
         allow_submit_from_chat: false   # real submission from a chat slash command
         expose_agent_tool: false        # offer the read-only minefield_recent_incident tool to the model
-        auto_lite: "false"              # "true": background Lite once per process, multi-slot servers only
+        auto_lite: "false"              # legacy key; session-start probing disabled on this branch
 ```
 
-Invalid values never break Hermes: each one falls back to its default, with one warning. Legacy locations (`…hermes-minefield.config`, the entry itself, or a top-level `minefield:` block) are still read.
+Invalid values never break Hermes: each one falls back to its default, with one warning. Legacy locations (`â€¦hermes-minefield.config`, the entry itself, or a top-level `minefield:` block) are still read.
 
 `check` and `doctor` resolve the endpoint through **Hermes's own provider logic** (named providers, env config, credential pools) and pass its API key to Minefield. The key is never printed, cached or stored. An explicit `--base-url` only gets Hermes's key if it *is* Hermes's endpoint, and `--base-url` isn't accepted from chat. If Hermes's active provider isn't an OpenAI-compatible chat-completions API (for example Bedrock), the verdict is `UNKNOWN`: Minefield can't probe it.
 
@@ -123,14 +136,14 @@ Everything stays under `$HERMES_HOME/minefield/` (directories `0700`, files `060
 | short enum-like error types and reasons | error **messages**, URLs, hostnames |
 | hashed session, request and tool-call ids | raw ids |
 
-The recorder writes one segment file per Hermes process (`recorder/events-<pid>-….jsonl`), so the CLI, the gateway and a fresh `wtf` process never overwrite each other. Recording does no disk I/O on the hook thread. A background thread flushes about every 2 s, so Hermes never waits on disk.
+The recorder writes one segment file per Hermes process (`recorder/events-<pid>-â€¦.jsonl`), so the CLI, the gateway and a fresh `wtf` process never overwrite each other. Recording does no disk I/O on the hook thread. A background thread flushes about every 2 s, so Hermes never waits on disk.
 
 ## Publishing is always a human step
 
 - No automatic upload, and model output can never approve anything.
 - A draft is saved with the SHA-256 of its exact title and body. `hermes minefield contribute --submit-draft <id> --i-approve-submit --submit` sends **exactly** those bytes. Tampered drafts are refused.
 - Without `--submit` it's a dry run. From a chat surface, real submission is refused unless `allow_submit_from_chat: true`, because anyone in a room can type slash commands.
-- The target repo comes from a deterministic classification → repo map, or an explicit `--repo`. Model-suggested repos are ignored. The recommended repo is only a recommendation, not approval.
+- The target repo comes from a deterministic classification â†’ repo map, or an explicit `--repo`. Model-suggested repos are ignored. The recommended repo is only a recommendation, not approval.
 - Remote duplicate search is opt-in (`--remote-dedupe`), and it prints the exact sanitized terms before sending them.
 - A closed GitHub issue is never assumed to be fixed.
 
@@ -141,8 +154,8 @@ With `expose_agent_tool: true`, the model can call `minefield_recent_incident` w
 ## Troubleshooting
 
 - `HERMES_PLUGINS_DEBUG=1 hermes minefield status` shows plugin loading and any hook errors.
-- `wtf` says `UNKNOWN — no recorder events`: either the plugin isn't enabled in the Hermes process that did the work, or nothing happened in that window. Try `hermes minefield wtf 30m --session all`.
-- `check` says `UNKNOWN — endpoint could not be tested`: the server is down or unreachable. Nothing was cached.
+- `wtf` says `UNKNOWN â€” no recorder events`: either the plugin isn't enabled in the Hermes process that did the work, or nothing happened in that window. Try `hermes minefield wtf 30m --session all`.
+- `check` says `UNKNOWN â€” endpoint could not be tested`: the server is down or unreachable. Nothing was cached.
 
 ## Compatibility
 

@@ -23,7 +23,7 @@ from ..config import (
     DEFAULT_RECORDER_MAX_EVENTS,
     DEFAULT_RECORDER_RETENTION_SECONDS,
 )
-from ..paths import recorder_dir
+from ..paths import hermes_home, recorder_dir
 from .events import RecorderEvent
 
 SEGMENT_GLOB = "events-*.jsonl"
@@ -43,6 +43,7 @@ class RecorderStats:
     persisted_path_exists: bool = False
     persisted_approx_bytes: int = 0
     persisted_segments: int = 0
+    persistence_dropped: int = 0
 
 
 @dataclass
@@ -151,7 +152,10 @@ def load_recent_persisted_events(
                 continue
             parsed.append(ev)
 
-    parsed.sort(key=lambda e: (e.ts, e.event_id))
+    # Python's stable sort preserves append order within a segment when the
+    # platform clock gives consecutive events the same timestamp. Random IDs
+    # are identity, not chronology. Cross-process ties remain unordered evidence.
+    parsed.sort(key=lambda e: e.ts)
     if len(parsed) > max_events:
         parsed = parsed[-max_events:]
     return parsed
@@ -171,7 +175,7 @@ def merge_events(
                 continue
             seen.add(key)
             out.append(ev)
-    out.sort(key=lambda e: (e.ts, e.event_id))
+    out.sort(key=lambda e: e.ts)
     return out, len(memory), len(persisted), len(out)
 
 
@@ -214,7 +218,9 @@ class FlightRecorder:
         self.max_bytes = max_bytes
         self.persist = persist
         self._path = path  # single-file mode (tests); None = segment mode
-        self._directory = directory
+        # Capture owner scope before any worker thread is created. Context-local
+        # Hermes profile overrides do not automatically propagate to threads.
+        self._directory = directory or (hermes_home() / "minefield" / "recorder")
         self._segment: Path | None = None
         self._segment_seq = 0
         self._started = int(time.time())
@@ -223,7 +229,9 @@ class FlightRecorder:
         self._approx_bytes = 0
         self._lock = threading.RLock()  # guards _buf / _pending (memory only, never held for I/O)
         self._io_lock = threading.Lock()  # serializes this recorder's file writes
-        self._pending: list[str] = []  # serialized rows awaiting flush
+        self._pending: deque[str] = deque()  # bounded even if disk stalls
+        self._pending_bytes = 0
+        self._persistence_dropped = 0
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -266,6 +274,10 @@ class FlightRecorder:
             self._trim_locked()
             if self.persist and row is not None and not self._stop.is_set():
                 self._pending.append(row)
+                self._pending_bytes += len(row)
+                while len(self._pending) > self.max_events or self._pending_bytes > self.max_bytes:
+                    self._pending_bytes -= len(self._pending.popleft())
+                    self._persistence_dropped += 1
                 if len(self._pending) >= self.FLUSH_BATCH:
                     self._wake.set()
         if self.persist and self._thread is None:
@@ -293,7 +305,8 @@ class FlightRecorder:
 
     def _take_pending(self) -> list[str]:
         with self._lock:
-            rows, self._pending = self._pending, []
+            rows, self._pending = list(self._pending), deque()
+            self._pending_bytes = 0
         return rows
 
     def _write_pending(self) -> None:
@@ -506,6 +519,7 @@ class FlightRecorder:
             persisted_path_exists=n > 0,
             persisted_approx_bytes=pbytes,
             persisted_segments=n,
+            persistence_dropped=self._persistence_dropped,
         )
 
     def clear(self) -> None:
@@ -513,19 +527,28 @@ class FlightRecorder:
             self._buf.clear()
             self._approx_bytes = 0
             self._pending.clear()
+            self._pending_bytes = 0
 
 
-# Process singleton used by hooks + commands
+# Explicit test override; production recorders are keyed by trusted host home.
 _GLOBAL: FlightRecorder | None = None
+_SCOPED: dict[Path, FlightRecorder] = {}
 _GLOBAL_LOCK = threading.Lock()
 
 
 def get_recorder(**kwargs) -> FlightRecorder:
-    global _GLOBAL
+    scope = hermes_home()
     with _GLOBAL_LOCK:
-        if _GLOBAL is None:
-            _GLOBAL = FlightRecorder(**kwargs)
-        return _GLOBAL
+        if _GLOBAL is not None:
+            return _GLOBAL
+        for old_scope, recorder in list(_SCOPED.items()):
+            if recorder._stop.is_set():
+                del _SCOPED[old_scope]
+        if scope not in _SCOPED:
+            if len(_SCOPED) >= 64:
+                raise RuntimeError("recorder profile capacity reached")
+            _SCOPED[scope] = FlightRecorder(**kwargs)
+        return _SCOPED[scope]
 
 
 def reset_recorder_for_tests(**kwargs) -> FlightRecorder:
@@ -533,6 +556,11 @@ def reset_recorder_for_tests(**kwargs) -> FlightRecorder:
     with _GLOBAL_LOCK:
         if _GLOBAL is not None:
             _GLOBAL.stop()
+        for recorder in _SCOPED.values():
+            recorder.stop()
+        _SCOPED.clear()
         kwargs.setdefault("persist", False)
-        _GLOBAL = FlightRecorder(**kwargs)
-        return _GLOBAL
+        _GLOBAL = None
+        recorder = FlightRecorder(**kwargs)
+        _SCOPED[hermes_home()] = recorder
+        return recorder

@@ -1,36 +1,17 @@
-# Instructions for coding agents
+# Minefield integration operating rules
 
-This repo is **hermes-minefield**, a standalone Hermes Agent plugin that adapts
-[Model Serving Minefield](https://github.com/Blackwellboy/model-serving-minefield) into Hermes.
+Implement docs/integration/BUILD_SPEC.md (owner handoff, 2026-10-14).
+Read docs/integration/NEXT_ACTION.md and Git status before resuming.
+The old docs/IMPROVEMENT_PLAN.md is retained as migration history; its one-task
+stop rule is superseded by the owner's M0-M7 assignment.
 
-## If you were asked to "work on the plan"
-
-The plan is implemented through T6.2 (see the status note at the top of the plan). New work goes in **§6 Parking lot** first, then becomes a task.
-
-
-1. Open `docs/IMPROVEMENT_PLAN.md` and read **§0 (How to execute)** and **§2 (Hermes facts)** in full.
-2. Pick the first unticked task (`- [ ]`) **in the §4.0 milestone order** (not numeric ID order). Do only that task. Don't start a new milestone until the previous milestone's gate has passed.
-3. Follow its **Do** steps exactly. Meet its **Accept** criteria and pass the check gate in §0.1.
-4. Open one PR for that task. Tick its box. Stop.
-
-## Hard rules (always, even outside the plan)
-
-- **Missing evidence must never become negative evidence. `UNKNOWN` is not `PASS`.** Every `check`, `doctor`, `wtf`, and `status` result carries an explicit verdict (`PASS`, `FAIL`, or `UNKNOWN`). "Couldn't test", "unreachable", "no events", and "stale cache" are all `UNKNOWN`, never clean.
-- Never store raw tool args, tool results, prompts, conversation text, or API keys. Store hashes, lengths, and counts only.
-- Never add automatic GitHub submission, and never let model output approve anything.
-- Hook callbacks must be pure and fast, and must never raise. `pre_tool_call` failing or timing out **blocks the user's tool** in Hermes.
-- `pre_llm_call` callbacks must return `None`. Anything else is injected into the prompt.
-- No new runtime dependencies. Don't weaken or delete tests to get green.
-- Nothing leaves the machine without the user seeing exactly what will be sent first. Remote lookups, including GitHub duplicate search, are off by default.
-- Don't open PRs or issues outside `Blackwellboy/hermes-minefield` without written owner approval.
-- If this repo's code disagrees with `docs/IMPROVEMENT_PLAN.md`, stop and report the discrepancy. Don't guess.
-
-## Quick commands
-
-```bash
-./scripts/dev_setup.sh && source .venv/bin/activate
-ruff check hermes_minefield tests && ruff format --check hermes_minefield tests
-pytest -q
-pytest -q -m gate_a tests/e2e     # real Hermes processes, ~5 min
-./scripts/validate_plugin.sh
-```
+- Never contact real model endpoints, SSH, inspect private runtime configuration,
+  install into an active profile, load models, or mutate services.
+- Use scripts/isolated_test.py for tests. Downloads/installations are separate.
+- Missing, cancelled, stale or unexecuted evidence is UNKNOWN, never PASS.
+- Preserve draft PR #2 and later main work. Explicit-path Git staging only.
+- Sharing OFF by default; no model argument grants human authority.
+- No raw private data, secrets, content hashes or arbitrary logs in exports.
+- No merge, release, production collector, catalogue/Nous contact or third-party
+  submission. Keep checkpoints and acceptance evidence honest.
+- Retain existing tests and security gates. Use stdlib where possible.

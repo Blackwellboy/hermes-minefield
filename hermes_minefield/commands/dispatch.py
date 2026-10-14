@@ -148,8 +148,10 @@ def handle_cli(args: Any) -> dict[str, Any]:
 def slash_result(raw_args: str) -> dict[str, Any]:
     """Parse + run a slash command; returns the structured result."""
     raw = (raw_args or "").strip()
-    if not raw:
-        return {"ok": True, "text": USAGE}
+    if not raw or raw.split()[0] in {"home", "checks", "preview", "privacy", "help", "back", "cancel"}:
+        from ..service.workspace import command
+
+        return _guard(lambda: {"ok": True, "text": command(raw)})
     try:
         parts = shlex.split(raw)
     except ValueError:

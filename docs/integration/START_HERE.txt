@@ -1,0 +1,19 @@
+Implement the attached MINEFIELD_HERMES_CODEX_BUILD_SPEC.md in the existing Blackwellboy/hermes-minefield repository, using Blackwellboy/model-serving-minefield as the shared diagnostic engine.
+
+Read the FULL specification, section by section, plus the applicable AGENTS.md files. Put the specification under docs/integration/ and keep only a short pointer and operating rules in AGENTS.md. This is an implementation assignment, not a request to write another plan.
+
+The required end product is genuinely interactive INSIDE Hermes: open Minefield, understand recent problems, choose checks, inspect the target/input/request budget, approve the exact plan through a trusted user action, follow actual progress, cancel, inspect evidence, and manage contributions/privacy. Build both the native CLI/chat workflow and the Hermes Desktop SDK interface backed by the same service. Use supported host APIs; do not invent widget APIs or substitute a standalone dashboard, printed Python commands or dummy buttons. Include local model-callable diagnostic tools and a small bundled skill.
+
+Reconcile existing adapter main and draft PR #2 first. Preserve later merged work. Refresh actual dependency/API references and prove compatibility with the selected current Hermes release and Minefield core. Old passing CI does not certify the new combination.
+
+Implement the optional automatic contribution system end to end: closed-schema metadata projection, clear forward-only per-profile/per-recipient consent, preview/pause/off/purge controls, bounded aggregation/outbox/retries, a locally tested reference collector, deletion/retention behaviour and a useful restricted maintainer view. Sharing is OFF by default. Do not collect conversations, arbitrary logs, private names, credentials or private-content hashes, and do not auto-publish GitHub issues. Do not assume Nous consent or infrastructure gives Minefield access to users' data.
+
+IMPORTANT: My real models and Hermes sessions are busy. Do not contact any actual model endpoint, even for GET /models or health; do not SSH, inspect live private configurations, load models, use GPUs, restart services or install into my active Hermes profile. Use isolated test homes, synthetic data, real host loader/dispatch tests and loopback fixture servers only. Public source/dependency downloads are separate from runtime tests.
+
+Work through M0-M7 in reviewable commits and run the mapped acceptance tests. Continue independent offline work when a live or upstream gate is reached; do not stop after documentation or the first milestone. Maintain BASELINE.md, PUBLIC_API_MATRIX.md, IMPLEMENTATION_STATUS.md, DECISIONS.md, ACCEPTANCE_MATRIX.md and NEXT_ACTION.md with exact commits and actual evidence. Checkpoint before context limits so the next coding session can resume without recreating work.
+
+Do not merge existing drafts or the feature branch, deploy a production collector, enable reporting, publish releases/tags, contact Nous, open third-party PRs/issues or submit to the catalogue without separate approval. Prepare those deliverables instead. Do not weaken tests, approvals or security scans to finish.
+
+Before reporting completion, prove the real interactive paths, budgets, profile isolation, cancellation, privacy boundaries and actual client-to-fixture-collector delivery. Distinguish pure unit tests from real Hermes/SDK integration tests. No unrun test is a pass. Report exactly what works on each surface, changed commits/PRs, acceptance results, known limitations and the remaining owner-only live/release/deployment gates. Use OFFLINE_BETA_READY only when its stated requirements are met.
+
+Begin by recording the fresh baseline and then implement the first coherent batch.
