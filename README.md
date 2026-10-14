@@ -29,8 +29,19 @@ Every diagnostic result carries an explicit **verdict**:
 
 ## Commands
 
+Not sure where to start? Type **`/minefield`** on its own in a Hermes chat (or `hermes minefield` in a shell) for a numbered menu. Every item says what it touches before it runs, and `/minefield <number> [args]` runs it exactly like the named command, with the same guards:
+
+```
+1 quick check (≤5 requests)   2 what just happened (wtf)   3 look up a symptom
+4 scan my Hermes config       5 full Doctor (needs --yes)  6 status
+7 incidents and issues        8 draft a trap report (never uploads on its own)
+```
+
 | CLI (terminal) | Slash (inside a Hermes chat) | What it does |
 |---|---|---|
+| `hermes minefield` / `menu` | `/minefield` | The numbered menu |
+| `hermes minefield guide <symptom>` | `/minefield guide <symptom>` | Look up a plain-words symptom in the trap registry. Offline |
+| `hermes minefield scan [path ...]` | `/minefield scan` | Read-only scan for known traps. Chat scans only your Hermes config; naming paths is CLI-only |
 | `hermes minefield check` | `/minefield check` | Lite preflight: at most 5 requests; cached per endpoint fingerprint (30-day TTL) |
 | `hermes minefield doctor` | `/minefield doctor` | Full Doctor. Explicit only; asks for `--yes` on single-slot or unknown-concurrency servers |
 | `hermes minefield wtf [5m]` | `/minefield wtf [5m]` | Freeze the flight recorder and explain what just happened (current session by default; `--session all`) |
@@ -40,6 +51,7 @@ Every diagnostic result carries an explicit **verdict**:
 | `hermes minefield status` | `/minefield status` | Fingerprint, cached verdict, recorder health |
 | `hermes minefield prune` | `/minefield prune` | Delete old local incidents, candidates and drafts (`--older-than 30d`, `--dry-run`) |
 | `hermes minefield clear-cache` | `/minefield clear-cache` | Clear the Lite result cache |
+| `hermes minefield help` | `/minefield help` | Every command and flag |
 
 Every command accepts `--json` for machine-readable output, which goes through the privacy sanitizer. `/minefield <cmd> -h` shows help in chat.
 

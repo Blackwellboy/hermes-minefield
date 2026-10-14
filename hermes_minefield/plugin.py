@@ -56,8 +56,8 @@ def register(ctx: Any) -> None:
     ctx.register_command(
         "minefield",
         handler=handle_slash,
-        description="Minefield: check | doctor | wtf | contribute | issues | status",
-        args_hint="check|doctor|wtf|contribute|issues|status",
+        description="Minefield: model-serving trap checks (no args = numbered menu)",
+        args_hint="[1-8] | guide <symptom> | scan | check | doctor | wtf | contribute | issues | status | help",
     )
 
     # Flight recorder hooks — metadata only; never block the agent.
