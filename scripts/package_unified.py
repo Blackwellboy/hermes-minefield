@@ -19,7 +19,9 @@ def build(destination):
             for p in (root / name).rglob("*")
             if p.is_file() and p.suffix in {".py", ".md", ".js", ".json"} and "__pycache__" not in p.parts
         )
-    files.extend(root / name for name in ("plugin.yaml", "pyproject.toml", "README.md", "LICENSE"))
+    files.extend(
+        root / name for name in ("__init__.py", "plugin.yaml", "pyproject.toml", "README.md", "LICENSE")
+    )
     manifest = {
         str(p.relative_to(root)).replace("\\", "/"): hashlib.sha256(p.read_bytes()).hexdigest()
         for p in sorted(files)
