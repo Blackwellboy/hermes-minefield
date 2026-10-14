@@ -117,7 +117,7 @@ plugins:
         remote_dedupe: false            # search GitHub for duplicates while drafting
         allow_submit_from_chat: false   # real submission from a chat slash command
         expose_agent_tool: false        # offer the read-only minefield_recent_incident tool to the model
-        auto_lite: "false"              # "true": background Lite once per process, multi-slot servers only
+        auto_lite: "false"              # legacy key; session-start probing disabled on this branch
 ```
 
 Invalid values never break Hermes: each one falls back to its default, with one warning. Legacy locations (`â€¦hermes-minefield.config`, the entry itself, or a top-level `minefield:` block) are still read.

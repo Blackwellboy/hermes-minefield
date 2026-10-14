@@ -46,4 +46,4 @@ config_schema:
   remote_dedupe: {type: bool, default: false, description: "Search GitHub for duplicates while drafting (sends sanitized title terms)"}
   allow_submit_from_chat: {type: bool, default: false, description: "Allow real issue submission from a chat slash command"}
   expose_agent_tool: {type: bool, default: false, description: "Offer the read-only minefield_recent_incident tool to the model"}
-  auto_lite: {type: str, default: "false", description: "true = background Lite once per process on multi-slot endpoints"}
+  auto_lite: {type: str, default: "false", description: "Legacy setting retained; session-start probing is disabled"}

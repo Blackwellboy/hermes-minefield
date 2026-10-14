@@ -52,3 +52,10 @@ imports required the optional core before use; imports are now deferred. Core CI
 found pytest in its unittest-only job; the same three tests now run as unittest.
 Core bundle was regenerated and verified. Current core pin: `6c75e3097832419fb224a918b4d285f16f5bfb62`.
 The rerun, including secret scan and generated-artifact checks, remains pending.
+
+Core 6c75e30 remote agent-platform rerun passed, including its unit tests,
+deterministic generated artifacts, package smoke and secret scan; no-public-mining
+also passed. This does not erase the broad local Windows doctor failures. A local
+unittest run additionally reported a missing git executable in the stripped test
+PATH and an offline scan assertion (279 run, 1 failure, 1 error, 1 skip).
+The three execution tests now pass under the actual unittest discovery runner.
