@@ -12,7 +12,7 @@ license = { text = "MIT" }
 authors = [{ name = "Blackwellboy" }]
 dependencies = [
   # Not on PyPI; pinned to the SHA CI tests against (see plugin.yaml).
-  "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@f74e109256d61c08d083fbf532f409b4c20a3921",
+  "model-serving-minefield>=0.2.1,<0.3",
 ]
 
 [project.optional-dependencies]
