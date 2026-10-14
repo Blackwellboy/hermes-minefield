@@ -29,6 +29,15 @@ def test_privileged_payload_is_not_an_approval(hermes_plugins):
     assert "approval_available" in handler("preview request_validation")
 
 
+def test_session_observation_never_starts_legacy_active_probe(hermes_plugins, monkeypatch):
+    from hermes_minefield import auto_lite
+
+    starts = []
+    monkeypatch.setattr(auto_lite, "maybe_start", lambda: starts.append(True))
+    hermes_plugins.invoke_hook("on_session_start", session_id="synthetic-passive-only")
+    assert starts == []
+
+
 def test_actual_host_discovers_local_tools_and_bundled_skill(hermes_plugins):
     from tools.registry import registry
 
