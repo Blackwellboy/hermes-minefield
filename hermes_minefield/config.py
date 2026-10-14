@@ -71,18 +71,47 @@ class MinefieldPluginConfig:
         )
 
 
-def load_hermes_config() -> dict[str, Any]:
-    """Best-effort load of ~/.hermes/config.yaml. Never raises."""
+# Why the last load_hermes_config() came back empty, for status/target errors.
+# None after a successful read.
+last_config_load_error: Optional[str] = None
+
+
+def _yaml_safe_load(text: str) -> Any:
+    """PyYAML when present, else ruamel.yaml.
+
+    Hermes environments since 2026-10 ship ruamel.yaml (for comment-preserving
+    config writes) and not PyYAML, so an ``import yaml``-only loader reads every
+    config as empty there.
+    """
     try:
         import yaml
+    except ImportError:
+        yaml = None
+    if yaml is not None:
+        return yaml.safe_load(text)
+    from ruamel.yaml import YAML
+
+    return YAML(typ="safe", pure=True).load(text)
+
+
+def load_hermes_config() -> dict[str, Any]:
+    """Best-effort load of ~/.hermes/config.yaml. Never raises."""
+    global last_config_load_error
+    try:
         from .paths import hermes_home
 
         path = hermes_home() / "config.yaml"
         if not path.is_file():
+            last_config_load_error = f"no config file at {path}"
             return {}
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except Exception:
+        data = _yaml_safe_load(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            last_config_load_error = f"{path} is not a YAML mapping"
+            return {}
+        last_config_load_error = None
+        return data
+    except Exception as e:
+        last_config_load_error = f"could not read Hermes config: {type(e).__name__}: {e}"
         return {}
 
 

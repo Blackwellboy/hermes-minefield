@@ -42,7 +42,7 @@ def run_status(*, base_url: Optional[str] = None, model: Optional[str] = None) -
                 f"inconclusive={i} requests={entry.requests_executed}"
             )
     except Exception as e:
-        cache_age = f"target unresolved: {type(e).__name__}"
+        cache_age = f"target unresolved: {type(e).__name__}: {e}"
 
     rec = get_recorder()
     stats = rec.stats()
