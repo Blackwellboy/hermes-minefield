@@ -34,6 +34,9 @@ Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). S
 - Manifest v2 (`requires_hermes >=0.21,<0.22`, `config_schema`, pinned dependency). Safe `auto_lite`. Opt-in read-only `minefield_recent_incident` agent tool. (T5.1, T5.3, T5.4)
 - CI: lint; tests on 3.11–3.13; `hermes-compat` matrix (0.21.0, pinned, 0.21.5, and `main` non-blocking) with the hook contract test, real-loader tests and the Gate A scenario suite. (T0.3–T0.5, T3.8)
 
+### Added — trap-form drafts (2026-10-15, from #5)
+- `contribute` drafts aimed at `Blackwellboy/model-serving-minefield` use the public trap form's headings (What broke / What you saw / What fixed it / What were you serving / Optional diagnostic evidence) and carry the incident's known trap matches. "What fixed it" says `Not fixed yet.` and shows the rule's suggestion labelled *not yet applied*, so a report never claims a fix nobody made. The repository match ignores case.
+
 ### Fixed — integration onto main (2026-10-15)
 - Carries main's #7: the file loader falls back to `ruamel.yaml` when PyYAML is missing (Hermes 0.21.6+ environments ship only ruamel), records why a read came back empty, and `target unresolved` says so. Provider blocks written as `api:` resolve.
 - A missing Minefield core package is now `UNKNOWN` with an install hint (`pip install "model-serving-minefield>=0.2,<0.3"` or `hermes pm repair`), not "internal error (ModuleNotFoundError)".

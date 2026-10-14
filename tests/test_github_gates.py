@@ -91,8 +91,6 @@ def test_draft_redacts_secrets(tmp_hermes_home):
     assert "10.0.0.5" not in body
 
 
-
-
 def test_minefield_draft_matches_public_issue_form_shape(tmp_hermes_home):
     art = {
         "incident_id": "INC-TEST-FORM",
@@ -134,6 +132,29 @@ def test_minefield_draft_matches_public_issue_form_shape(tmp_hermes_home):
     assert "Compare streamed content and reasoning deltas." in body
     assert '"model": "example/model"' in body
     assert '"provider": "vllm"' in body
+
+    # A rule's recommended action is a suggestion, never reported as the fix.
+    fixed = body.split("### What fixed it", 1)[1].split("###", 1)[0]
+    assert "Not fixed yet." in fixed
+    assert "Suggested next step (not yet applied): run the trap-specific paired control" in fixed
+
+
+def test_minefield_target_match_ignores_case(tmp_hermes_home):
+    art = {
+        "incident_id": "INC-TEST-CASE",
+        "classification": "MODEL_SERVER_BUG",
+        "observed_symptom": "x",
+        "likely_root_cause": "y",
+        "actual_execution_counts": {},
+        "repeated_call_counts": {},
+        "severity": "LOW",
+        "confidence": "LOW",
+    }
+    draft = build_issue_draft(
+        artifact=art, target_repo="blackwellboy/Model-Serving-Minefield", environment={}
+    )
+    assert "### What broke" in draft.body
+    assert "Not fixed yet." in draft.body
 
 
 def test_non_minefield_target_keeps_generic_bug_draft_shape(tmp_hermes_home):

@@ -38,7 +38,12 @@ class IssueDraft:
     user_selected_repo: bool = False
 
     def render_body(self) -> str:
-        if self.target_repo == MINEFIELD_REPO:
+        if (self.target_repo or "").strip().lower() == MINEFIELD_REPO.lower():
+            # `impact` is the rule's recommended action, a suggestion nobody has applied yet.
+            # The trap form's "What fixed it" must never claim a fix that did not happen.
+            fixed = "Not fixed yet."
+            if self.impact:
+                fixed += f" Suggested next step (not yet applied): {self.impact}"
             lines = [
                 "### What broke",
                 self.summary,
@@ -47,7 +52,7 @@ class IssueDraft:
                 self.observed,
                 "",
                 "### What fixed it",
-                self.impact or "Still under investigation.",
+                fixed,
                 "",
                 "### What were you serving",
                 "```json",
