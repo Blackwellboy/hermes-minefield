@@ -10,7 +10,7 @@ permissions:
 
 env:
   # Bump deliberately (and update docs/IMPROVEMENT_PLAN.md §2 / T0.5 in the same PR).
-  MINEFIELD_REF: 12822f3ec6d8600df113e773d2e588f3659f0120  # 0.2.0 (match_symptom API)
+  MINEFIELD_REF: f74e109256d61c08d083fbf532f409b4c20a3921  # 0.2.1 + menu (guide renderer, static scan)
 
 jobs:
   lint:

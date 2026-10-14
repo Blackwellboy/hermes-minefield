@@ -14,6 +14,12 @@ from typing import Any
 from .. import verdict as V
 from ..paths import hermes_home
 
+NEEDS_NEWER_CORE = (
+    "minefield: this command needs model-serving-minefield 0.2.1 or newer (the installed core "
+    "has no {what}). Upgrade it in the Python that runs Hermes: "
+    'pip install -U "model-serving-minefield>=0.2.1,<0.3"'
+)
+
 
 def run_scan(*, paths: list[str] | None = None, surface: str = "cli") -> dict[str, Any]:
     if paths and surface == "slash":
@@ -24,8 +30,13 @@ def run_scan(*, paths: list[str] | None = None, surface: str = "cli") -> dict[st
         }
     targets = list(paths or [str(hermes_home() / "config.yaml")])
     from minefield.registry import load_registry
-    from minefield.render import render_scan
-    from minefield.scan import scan
+
+    try:
+        from minefield.render import render_scan
+        from minefield.scan import scan
+    except ImportError:
+        msg = NEEDS_NEWER_CORE.format(what="static scanner")
+        return {"ok": False, "verdict": V.UNKNOWN, "text": msg + "\n\n" + V.line(V.UNKNOWN, "not run")}
 
     report = scan(targets)
     if not report.get("accepted_paths"):

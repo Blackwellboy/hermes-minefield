@@ -44,7 +44,7 @@ def test_help_lists_commands(tmp_hermes_home):
 
 
 def test_guide_matches_the_registry(tmp_hermes_home):
-    pytest.importorskip("minefield")
+    pytest.importorskip("minefield.render")
     out = slash_result("3 streaming replies are blank")
     assert out["ok"] is True
     assert "Trap 23" in out["text"]
@@ -58,7 +58,7 @@ def test_guide_without_words_explains(tmp_hermes_home):
 
 
 def test_scan_from_chat_reads_only_the_hermes_config(tmp_hermes_home):
-    pytest.importorskip("minefield")
+    pytest.importorskip("minefield.scan")
     out = slash_result("4 /etc")
     assert out["ok"] is False and "CLI-only" in out["text"]
     (tmp_hermes_home / "config.yaml").write_text("agent:\n  reasoning_effort: high\n", encoding="utf-8")
@@ -69,6 +69,18 @@ def test_scan_from_chat_reads_only_the_hermes_config(tmp_hermes_home):
 
 
 def test_scan_with_nothing_readable_is_unknown(tmp_hermes_home):
-    pytest.importorskip("minefield")
+    pytest.importorskip("minefield.scan")
     out = slash_result("scan")  # tmp home has no config.yaml
     assert out["verdict"] == V.UNKNOWN
+
+
+def test_an_older_core_gets_an_upgrade_hint_not_an_internal_error(tmp_hermes_home, monkeypatch):
+    import sys
+
+    pytest.importorskip("minefield")
+    monkeypatch.setitem(sys.modules, "minefield.scan", None)
+    monkeypatch.setitem(sys.modules, "minefield.render", None)
+    for cmd in ("4", "3 blank replies"):
+        out = slash_result(cmd)
+        assert out["verdict"] == V.UNKNOWN, cmd
+        assert "0.2.1 or newer" in out["text"], cmd

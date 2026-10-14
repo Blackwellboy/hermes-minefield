@@ -13,6 +13,7 @@ Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). S
 - `guide <symptom>`: offline lookup of a plain-words symptom in the trap registry (no verdict: a lookup is not a test of your setup).
 - `scan [path ...]`: read-only static scan for known traps. From chat it scans only the active Hermes config (naming paths is CLI-only, for the same reason as `--base-url`); nothing readable is `UNKNOWN`.
 - CI: a changelog check fails a PR that changes the plugin without a CHANGELOG line.
+- Core pin moved from `12822f3` (0.2.0) to `f74e109` (0.2.1 plus the core menu), because `guide` and `scan` need 0.2.1's renderer and static scanner. On an older core they say so (`UNKNOWN`, with the upgrade command) instead of failing; the suite passes on both pins.
 
 ### Fixed — diagnosis could say the opposite of reality
 - **F1** Recorder read `params=`; Hermes sends `args=`. Every tool call got the fingerprint of `None`, so any 10+ distinct calls became `AGENT_TOOL_LOOP`/HIGH. (T1.1)
