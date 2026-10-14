@@ -17,18 +17,23 @@ from typing import Any
 
 from .. import verdict as V
 from ..cache import clear_cache
+from . import menu
 from .check import run_check
 from .contribute import run_contribute
 from .doctor import run_doctor
+from .guide import run_guide
 from .issues import run_issues
 from .prune import run_prune
+from .scan import run_scan
 from .status import run_status
 from .wtf import run_wtf
 
 logger = logging.getLogger(__name__)
 
 USAGE = (
-    "Minefield commands:\n"
+    "Minefield commands (or just /minefield for the numbered menu):\n"
+    "  /minefield guide <what you are seeing>\n"
+    "  /minefield scan\n"
     "  /minefield status\n"
     "  /minefield check [--force] [--max-requests N]\n"
     "  /minefield doctor [--yes]\n"
@@ -122,8 +127,10 @@ def _clear_cache() -> dict[str, Any]:
 def run_command(args: Any, *, surface: str = "cli") -> dict[str, Any]:
     """Dispatch a parsed namespace. ``surface`` is "cli" or "slash"."""
     cmd = getattr(args, "minefield_command", None)
-    if not cmd:
-        return {"ok": False, "text": USAGE}
+    if not cmd or cmd == "menu":
+        return {"ok": True, "text": menu.render()}
+    if cmd == "help":
+        return {"ok": True, "text": USAGE}
     g = lambda name, default=None: getattr(args, name, default)  # noqa: E731
     if surface == "slash" and g("base_url"):
         # In gateway chats anyone in the room can type slash commands; letting them
@@ -170,6 +177,10 @@ def run_command(args: Any, *, surface: str = "cli") -> dict[str, Any]:
         )
     if cmd == "issues":
         return _guard(run_issues, limit=int(g("limit", 20) or 20), refresh=bool(g("refresh", False)))
+    if cmd == "guide":
+        return _guard(run_guide, symptom=g("symptom"), limit=int(g("limit", 5) or 5))
+    if cmd == "scan":
+        return _guard(run_scan, paths=g("paths"), surface=surface)
     if cmd == "clear-cache":
         return _guard(_clear_cache)
     if cmd == "prune":
@@ -185,13 +196,15 @@ def slash_result(raw_args: str) -> dict[str, Any]:
     """Parse + run a slash command; returns the structured result."""
     raw = (raw_args or "").strip()
     if not raw:
-        return {"ok": True, "text": USAGE}
+        return {"ok": True, "text": menu.render()}
     try:
         parts = shlex.split(raw)
     except ValueError:
         parts = raw.split()
     if parts:
         parts[0] = parts[0].lower()
+    # `/minefield 3 blank replies` runs item 3 exactly as `/minefield guide blank replies`.
+    parts = menu.translate(parts)
     try:
         args = _slash_parser().parse_args(parts)
     except UsageError as e:

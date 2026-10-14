@@ -1,0 +1,48 @@
+name: changelog
+
+# Every pull request that changes the plugin, its tests or its docs adds a line to
+# CHANGELOG.md (Keep a Changelog sections under the current version), so what was
+# done is tracked in one place. CI-only changes are exempt; the `no-changelog`
+# label skips the check for a change nobody would look for here.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  changelog-entry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require a CHANGELOG.md entry
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          SKIP: ${{ contains(github.event.pull_request.labels.*.name, 'no-changelog') }}
+        run: |
+          set -euo pipefail
+          if [ "$SKIP" = "true" ]; then
+            echo "no-changelog label set; skipping."
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE" "$HEAD")
+          relevant=$(printf '%s\n' "$changed" | grep -Ev '^(\.github/|CHANGELOG\.md$)' || true)
+          if [ -z "$relevant" ]; then
+            echo "Only CI files changed; no entry needed."
+            exit 0
+          fi
+          added=$(git diff "$BASE" "$HEAD" -- CHANGELOG.md | grep -E '^\+[^+]' | grep -Ev '^\+\s*$' || true)
+          if [ -z "$added" ]; then
+            echo "::error::This pull request changes:" >&2
+            printf '  %s\n' $relevant >&2
+            echo "::error::but adds nothing to CHANGELOG.md. Add a line under the current version's Added / Changed / Fixed section, or label the PR no-changelog." >&2
+            exit 1
+          fi
+          echo "Changelog lines added:"
+          printf '%s\n' "$added"

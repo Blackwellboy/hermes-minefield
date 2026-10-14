@@ -72,6 +72,16 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
     p_iss.add_argument("--limit", type=int, default=20)
     p_iss.add_argument("--refresh", action="store_true")
 
+    subs.add_parser("menu", help="Numbered menu of everything Minefield can do (also: no subcommand)")
+    subs.add_parser("help", help="Every command and flag")
+
+    p_guide = subs.add_parser("guide", help="Look up a symptom in the trap registry (offline)")
+    p_guide.add_argument("symptom", nargs="*", help="what you are seeing, in plain words")
+    p_guide.add_argument("--limit", type=int, default=5)
+
+    p_scan = subs.add_parser("scan", help="Read-only scan for known traps (chat: your Hermes config only)")
+    p_scan.add_argument("paths", nargs="*", help="files or folders (CLI only; default: Hermes config)")
+
     subs.add_parser("clear-cache", help="Clear fingerprint Lite cache")
 
     p_prune = subs.add_parser("prune", help="Delete old local incidents/candidates/drafts")

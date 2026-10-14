@@ -2,9 +2,18 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/).
 
+Every pull request that changes the plugin, its tests or its docs adds a line here under the current version (CI: `.github/workflows/changelog.yml`; label `no-changelog` to skip a typo fix).
+
 ## [0.2.0] — unreleased
 
 Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). Status: experimental until the owner signs off Gate A on a real install.
+
+### Added — the `/minefield` menu (2026-10-15)
+- `/minefield` on its own (and `hermes minefield` / `hermes minefield menu`) shows a numbered menu: 1 quick check, 2 what just happened, 3 look up a symptom, 4 scan my Hermes config, 5 full Doctor, 6 status, 7 incidents and issues, 8 draft a trap report. Each item says what it touches before it runs. `/minefield <number> [args]` runs the item exactly like its named command, so every guard still applies (`--base-url` CLI-only, Doctor needs `--yes`, nothing uploads without approval). `/minefield help` lists every command and flag.
+- `guide <symptom>`: offline lookup of a plain-words symptom in the trap registry (no verdict: a lookup is not a test of your setup).
+- `scan [path ...]`: read-only static scan for known traps. From chat it scans only the active Hermes config (naming paths is CLI-only, for the same reason as `--base-url`); nothing readable is `UNKNOWN`.
+- CI: a changelog check fails a PR that changes the plugin without a CHANGELOG line.
+- Core pin moved from `12822f3` (0.2.0) to `f74e109` (0.2.1 plus the core menu), because `guide` and `scan` need 0.2.1's renderer and static scanner. On an older core they say so (`UNKNOWN`, with the upgrade command) instead of failing; the suite passes on both pins.
 
 ### Fixed — diagnosis could say the opposite of reality
 - **F1** Recorder read `params=`; Hermes sends `args=`. Every tool call got the fingerprint of `None`, so any 10+ distinct calls became `AGENT_TOOL_LOOP`/HIGH. (T1.1)
