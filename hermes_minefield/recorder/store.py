@@ -151,7 +151,10 @@ def load_recent_persisted_events(
                 continue
             parsed.append(ev)
 
-    parsed.sort(key=lambda e: (e.ts, e.event_id))
+    # Python's stable sort preserves append order within a segment when the
+    # platform clock gives consecutive events the same timestamp. Random IDs
+    # are identity, not chronology. Cross-process ties remain unordered evidence.
+    parsed.sort(key=lambda e: e.ts)
     if len(parsed) > max_events:
         parsed = parsed[-max_events:]
     return parsed
@@ -171,7 +174,7 @@ def merge_events(
                 continue
             seen.add(key)
             out.append(ev)
-    out.sort(key=lambda e: (e.ts, e.event_id))
+    out.sort(key=lambda e: e.ts)
     return out, len(memory), len(persisted), len(out)
 
 
