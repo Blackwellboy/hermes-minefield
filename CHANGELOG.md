@@ -8,6 +8,9 @@ Every pull request that changes the plugin, its tests or its docs adds a line he
 
 Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). Status: experimental until the owner signs off Gate A on a real install.
 
+### Fixed — Hermes can install the core again (2026-10-15)
+- The core dependency was a `git+https` pin. Hermes PM does not install direct-URL requirements (`hermes plugins validate`: "direct URL requirement(s) are not managed by PM", 0 installable), so on a fresh Hermes 0.21.6+ runtime the core was never installed and `check`, `doctor`, `guide` and `scan` said the core was missing even after `hermes pm repair`. Declared as `model-serving-minefield>=0.2.1,<0.3` (on PyPI) in `pyproject.toml` and `plugin.yaml`; CI still checks out the exact core commit. A test fails if a direct-URL dependency is declared again.
+
 ### Added — the `/minefield` menu (2026-10-15)
 - `/minefield` on its own (and `hermes minefield` / `hermes minefield menu`) shows a numbered menu: 1 quick check, 2 what just happened, 3 look up a symptom, 4 scan my Hermes config, 5 full Doctor, 6 status, 7 incidents and issues, 8 draft a trap report. Each item says what it touches before it runs. `/minefield <number> [args]` runs the item exactly like its named command, so every guard still applies (`--base-url` CLI-only, Doctor needs `--yes`, nothing uploads without approval). `/minefield help` lists every command and flag.
 - `guide <symptom>`: offline lookup of a plain-words symptom in the trap registry (no verdict: a lookup is not a test of your setup).

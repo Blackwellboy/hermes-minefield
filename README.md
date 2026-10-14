@@ -79,7 +79,7 @@ Requires Hermes `>=0.21,<0.22`, the range CI proves (see "Compatibility" below).
 
 ```bash
 # 1) Minefield (not on PyPI) at the version CI tests against
-pip install "model-serving-minefield @ git+https://github.com/Blackwellboy/model-serving-minefield@f74e109256d61c08d083fbf532f409b4c20a3921"
+pip install "model-serving-minefield>=0.2.1,<0.3"
 
 # 2) The plugin, pinned to a release commit
 hermes plugins install Blackwellboy/hermes-minefield --ref <release-sha> --enable
