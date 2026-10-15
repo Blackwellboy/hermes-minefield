@@ -15,6 +15,10 @@ Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). S
 ### Docs — Hermes 0.22 shared-gateway chats and the PM quarantine (2026-10-15)
 - Troubleshooting: on Hermes 0.22 the modern TUI and the desktop app refuse `/minefield` (the shared gateway serves only reviewed built-in commands); the terminal command and the MCP tools work. `hermes pm repair` holds back core releases younger than 3 days (`exclude-newer`); `update --yes` installs them now. The `update` note says so.
 
+### Fixed — the flight recorder files each event under its own profile (2026-10-15)
+- On Hermes 0.22 one shared gateway serves every profile and scopes `HERMES_HOME` per turn with a context variable. The recorder's flusher thread does not inherit that context, so every profile's events were written to the default profile's `minefield/recorder/`: `wtf`/`incident` under another profile found nothing ("no recorder events"), and that profile's session metadata sat in the default profile's store. Each event now carries the recorder directory of the profile active on the hook thread, and the flusher keeps one segment per directory. Freezing, `status` and "current session" read only the caller's profile, so one profile's `incident` or agent tool never sees another profile's metadata from the shared process.
+- The profile lookup on the hook path is cached per profile (a context-variable read, no filesystem call per event); `record()` stays under the existing per-event cost test.
+
 ### Fixed — `update --yes` installs where the core actually loads from (2026-10-15)
 - Hermes 0.22 runs plugins on a shared base interpreter and adds a per-plugin-set environment (`installs/<id>/environments/<hash>/venv`) to `sys.path`, so upgrading `sys.executable` (as #13 did) changed the shared interpreter instead. The core upgrade now targets the environment that holds the imported `minefield` package, and says when Hermes manages it: Hermes rebuilds that environment from PyPI when plugins change, so a `--from-main` install lasts until then and a PyPI release is what reaches every install.
 
