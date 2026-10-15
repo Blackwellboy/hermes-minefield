@@ -26,6 +26,24 @@ from ..config import (
 from ..paths import recorder_dir
 from .events import RecorderEvent
 
+try:  # Hermes 0.22: the per-turn profile scope of the shared gateway (a context variable)
+    from hermes_constants import get_hermes_home_override as _home_override
+except ImportError:  # older Hermes, or no Hermes (tests, tools)
+    _home_override = None
+
+
+def _home_key() -> str:
+    """Cheap identity of the active profile home (no filesystem calls): the hook path
+    resolves the full recorder directory only once per distinct key."""
+    override = None
+    if _home_override is not None:
+        try:
+            override = _home_override()
+        except Exception:
+            override = None
+    return str(override or os.environ.get("HERMES_HOME") or os.environ.get("HERMES_HOME_DIR") or "")
+
+
 SEGMENT_GLOB = "events-*.jsonl"
 LEGACY_NAME = "events.jsonl"  # single shared file used by <=0.1.x; read-only now
 CLEANUP_INTERVAL = 30.0
@@ -194,6 +212,10 @@ class FlightRecorder:
       A daemon flusher thread writes batches (every ~2s or 32 events).
     - Each process appends only to its own segment file (multi-process safe)
     - Fresh CLI processes can freeze recent persisted events
+    - One process can serve several profiles (Hermes 0.22's shared gateway scopes
+      HERMES_HOME per turn with a context variable). Each event is filed under the
+      recorder directory of the profile that was active when it was recorded; the
+      flusher thread does not inherit that context, so it never resolves it itself.
     """
 
     FLUSH_BATCH = 32
@@ -215,20 +237,24 @@ class FlightRecorder:
         self.persist = persist
         self._path = path  # single-file mode (tests); None = segment mode
         self._directory = directory
-        self._segment: Path | None = None
+        self._segment: Path | None = None  # single-home convenience: the last segment written
+        self._segments: dict[Path, Path] = {}  # recorder dir -> this process's current segment there
+        self._dirs_seen: set[Path] = set()
+        self._dir_cache: dict[str, Path] = {}  # _home_key() -> recorder dir
         self._segment_seq = 0
         self._started = int(time.time())
         self._last_cleanup = 0.0
-        self._buf: deque[tuple[RecorderEvent, int]] = deque()  # (event, serialized size)
+        self._buf: deque[tuple[RecorderEvent, int, Path]] = deque()  # (event, size, recorder dir)
         self._approx_bytes = 0
         self._lock = threading.RLock()  # guards _buf / _pending (memory only, never held for I/O)
         self._io_lock = threading.Lock()  # serializes this recorder's file writes
-        self._pending: list[str] = []  # serialized rows awaiting flush
+        self._pending: list[tuple[Path, str]] = []  # (recorder dir, serialized row) awaiting flush
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self.last_freeze: FreezeResult | None = None
-        self.last_session_hash: str | None = None
+        self.last_session_hash: str | None = None  # newest overall (compat); per profile below
+        self._last_hash_by_home: dict[Path, str] = {}
 
     # -- locations ----------------------------------------------------------
 
@@ -237,17 +263,30 @@ class FlightRecorder:
             return self._path.parent
         return self._directory or recorder_dir()
 
-    def _new_segment_path(self) -> Path:
+    def _home_dir(self) -> Path:
+        """The recorder dir of the profile active on *this* thread, cached per profile."""
+        if self._path is not None or self._directory is not None:
+            return self._dir()
+        key = _home_key()
+        d = self._dir_cache.get(key)
+        if d is None:
+            d = self._dir_cache[key] = recorder_dir()
+        return d
+
+    def _new_segment_path(self, directory: Path | None = None) -> Path:
         self._segment_seq += 1
         name = f"events-{os.getpid()}-{self._started}-{secrets.token_hex(3)}-{self._segment_seq}.jsonl"
-        return self._dir() / name
+        return (directory or self._dir()) / name
 
-    def _write_target(self) -> Path:
+    def _write_target(self, directory: Path | None = None) -> Path:
         if self._path is not None:
             return self._path
-        if self._segment is None:
-            self._segment = self._new_segment_path()
-        return self._segment
+        directory = directory or self._dir()
+        seg = self._segments.get(directory)
+        if seg is None:
+            seg = self._segments[directory] = self._new_segment_path(directory)
+        self._segment = seg
+        return seg
 
     # -- hot path (called from Hermes hooks) -------------------------------
 
@@ -258,14 +297,19 @@ class FlightRecorder:
         except Exception:
             row = None
         size = len(row) if row is not None else 128
+        try:
+            home = self._home_dir()  # resolved here, on the hook thread, where the profile scope is set
+        except Exception:
+            home = Path(".")
         if event.session_id_hash:
             self.last_session_hash = event.session_id_hash
+            self._last_hash_by_home[home] = event.session_id_hash
         with self._lock:
-            self._buf.append((event, size))
+            self._buf.append((event, size, home))
             self._approx_bytes += size
             self._trim_locked()
             if self.persist and row is not None and not self._stop.is_set():
-                self._pending.append(row)
+                self._pending.append((home, row))
                 if len(self._pending) >= self.FLUSH_BATCH:
                     self._wake.set()
         if self.persist and self._thread is None:
@@ -291,7 +335,7 @@ class FlightRecorder:
             self._wake.clear()
             self._write_pending()
 
-    def _take_pending(self) -> list[str]:
+    def _take_pending(self) -> list[tuple[Path, str]]:
         with self._lock:
             rows, self._pending = self._pending, []
         return rows
@@ -304,23 +348,31 @@ class FlightRecorder:
             now = time.time()
             if self._path is None and now - self._last_cleanup > CLEANUP_INTERVAL:
                 self._last_cleanup = now
-                self.cleanup_segments(now=now)
+                for directory in sorted(self._dirs_seen) or [None]:
+                    self.cleanup_segments(now=now, directory=directory)
 
-    def _append_rows(self, rows: list[str]) -> None:
-        try:
-            target = self._write_target()
-            target.parent.mkdir(parents=True, exist_ok=True)
-            _append_private(target, "\n".join(rows) + "\n")
-            size = target.stat().st_size
-            if self._path is not None:
-                if size > self.max_bytes:
-                    self._rotate_single_file(target)
-            elif size > max(64 * 1024, self.max_bytes // 4):
-                self._segment = None  # next batch starts a new segment
-        except Exception:
-            pass
+    def _append_rows(self, rows: list[tuple[Path, str]]) -> None:
+        by_dir: dict[Path, list[str]] = {}
+        for directory, row in rows:
+            by_dir.setdefault(directory, []).append(row)
+        for directory, group in by_dir.items():
+            try:
+                target = self._write_target(directory)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                self._dirs_seen.add(directory)
+                _append_private(target, "\n".join(group) + "\n")
+                size = target.stat().st_size
+                if self._path is not None:
+                    if size > self.max_bytes:
+                        self._rotate_single_file(target)
+                elif size > max(64 * 1024, self.max_bytes // 4):
+                    self._segments.pop(directory, None)  # next batch there starts a new segment
+                    if self._segment == target:
+                        self._segment = None
+            except Exception:
+                pass
 
-    def cleanup_segments(self, *, now: float | None = None) -> int:
+    def cleanup_segments(self, *, now: float | None = None, directory: Path | None = None) -> int:
         """Delete expired segments, then oldest-first while over ``max_bytes``.
 
         Whole-file deletes only; never truncates or rewrites a file. Returns the
@@ -328,7 +380,9 @@ class FlightRecorder:
         """
         now = time.time() if now is None else now
         removed = 0
-        files = persisted_files(self._dir())  # newest first
+        directory = directory or self._dir()
+        current = self._segments.get(directory)
+        files = persisted_files(directory)  # newest first
         keep: list[tuple[Path, int]] = []
         expiry = now - self.retention_seconds - 60
         for f in files:
@@ -336,7 +390,7 @@ class FlightRecorder:
                 st = f.stat()
             except OSError:
                 continue
-            if st.st_mtime < expiry and f != self._segment:
+            if st.st_mtime < expiry and f != current:
                 removed += self._unlink(f)
             else:
                 keep.append((f, st.st_size))
@@ -344,7 +398,7 @@ class FlightRecorder:
         for f, size in reversed(keep):  # oldest first
             if total <= self.max_bytes:
                 break
-            if f == self._segment:
+            if f == current:
                 continue
             removed += self._unlink(f)
             total -= size
@@ -391,7 +445,7 @@ class FlightRecorder:
         while buf and (
             buf[0][0].ts < cutoff or len(buf) > self.max_events or self._approx_bytes > self.max_bytes
         ):
-            _, size = buf.popleft()
+            _, size, _home = buf.popleft()
             self._approx_bytes -= size
         self._approx_bytes = max(0, self._approx_bytes)
 
@@ -426,7 +480,10 @@ class FlightRecorder:
             if since_seconds is not None:
                 cutoff = now - since_seconds
             memory: list[RecorderEvent] = []
-            for ev, _ in self._buf:
+            home = self._home_dir()  # the caller's profile: never another profile's events
+            for ev, _, ev_home in self._buf:
+                if ev_home != home:
+                    continue
                 if cutoff is not None and ev.ts < cutoff:
                     continue
                 if session_id_hash and ev.session_id_hash and ev.session_id_hash != session_id_hash:
@@ -463,8 +520,11 @@ class FlightRecorder:
     def current_session_hash(self) -> str | None:
         """The most recently active session: in-memory first (inside Hermes), else the
         newest persisted event that carries one (a fresh CLI process)."""
-        if self.last_session_hash:
-            return self.last_session_hash
+        mine = self._last_hash_by_home.get(self._home_dir())
+        if mine:
+            return mine
+        if self.last_session_hash and not self._last_hash_by_home:
+            return self.last_session_hash  # set directly (tests / older callers)
         if not self.persist:
             return None
         recent = load_recent_persisted_events(
@@ -482,9 +542,11 @@ class FlightRecorder:
     def stats(self) -> RecorderStats:
         with self._lock:
             self._trim_locked()
-            oldest = self._buf[0][0].ts if self._buf else None
-            newest = self._buf[-1][0].ts if self._buf else None
-            in_memory = len(self._buf)
+            home = self._home_dir()
+            mine = [ev for ev, _, ev_home in self._buf if ev_home == home]
+            oldest = mine[0].ts if mine else None
+            newest = mine[-1].ts if mine else None
+            in_memory = len(mine)
             approx = self._approx_bytes
         files = [self._path] if self._path is not None else persisted_files(self._dir())
         pbytes = 0
