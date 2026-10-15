@@ -158,6 +158,8 @@ With `expose_agent_tool: true`, the model can call `minefield_recent_incident` w
 - `HERMES_PLUGINS_DEBUG=1 hermes minefield status` shows plugin loading and any hook errors.
 - `wtf` says `UNKNOWN — no recorder events`: either the plugin isn't enabled in the Hermes process that did the work, or nothing happened in that window. Try `hermes minefield wtf 30m --session all`.
 - `check` says `UNKNOWN — endpoint could not be tested`: the server is down or unreachable. Nothing was cached.
+- `/minefield is not available on the shared gateway yet` in the **modern TUI or the desktop app** (Hermes 0.22): those chats run on Hermes's shared gateway, whose `slash.exec` serves only its reviewed built-in commands and refuses plugin commands (`gateway/session_commands.py`, `command_verdict`). Run the same thing from a terminal (`hermes minefield <command>`, identical output and guards), or let the agent use Minefield's MCP tools in chat (`hermes mcp add minefield --command minefield-mcp`).
+- After a release, `hermes pm repair` may still install the previous core: Hermes PM ignores packages uploaded in the last 3 days (`exclude-newer` quarantine). `hermes minefield update --yes` installs the newest release now; a later environment rebuild picks it up once the quarantine passes.
 
 ## Compatibility
 

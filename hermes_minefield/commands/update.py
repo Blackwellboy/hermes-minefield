@@ -64,7 +64,8 @@ def _plugin_local() -> dict[str, Any]:
 
 PM_NOTE = (
     "Hermes manages this environment (`hermes pm`) and rebuilds it from PyPI when plugins "
-    "change; an install from --from-main lasts until that rebuild"
+    "change, holding back releases younger than 3 days (its exclude-newer quarantine); "
+    "an install from --from-main or of a newer release lasts until that rebuild"
 )
 
 
