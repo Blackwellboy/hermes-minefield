@@ -16,6 +16,7 @@ from __future__ import annotations
 import importlib.metadata
 import importlib.util
 import json
+import os
 import shlex
 import shutil
 import subprocess
@@ -61,8 +62,37 @@ def _plugin_local() -> dict[str, Any]:
     return info
 
 
+PM_NOTE = (
+    "Hermes manages this environment (`hermes pm`) and rebuilds it from PyPI when plugins "
+    "change; an install from --from-main lasts until that rebuild"
+)
+
+
+def _core_python() -> tuple[str, bool]:
+    """The Python whose environment holds the imported core, and whether Hermes PM manages it.
+
+    Under Hermes 0.22 the process runs a shared base interpreter and adds a per-plugin-set
+    environment (``.../environments/<id>/venv``) to ``sys.path``; installing into
+    ``sys.executable`` would change the shared interpreter, not the environment that loads.
+    """
+    try:
+        import minefield  # type: ignore[import-not-found]
+
+        here = Path(minefield.__file__).resolve()
+    except Exception:
+        return sys.executable, False
+    for d in here.parents:
+        if (d / "pyvenv.cfg").is_file():
+            py = d / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+            if py.exists():
+                return str(py), d.parent.parent.name == "environments"
+            break
+    return sys.executable, False
+
+
 def _core_local() -> dict[str, Any]:
-    info: dict[str, Any] = {"python": sys.executable, "installed": False}
+    python, managed = _core_python()
+    info: dict[str, Any] = {"python": python, "hermes_pm": managed, "installed": False}
     try:
         info["version"] = importlib.metadata.version(CORE_DIST)
         info["installed"] = True
@@ -112,17 +142,17 @@ def _vkey(v: str) -> tuple[int, ...]:
     return tuple(parts)
 
 
-def _core_command(spec: str) -> list[str] | None:
-    """Upgrade ``spec`` in the Python that runs this plugin (pip if present, else uv)."""
-    if importlib.util.find_spec("pip") is not None:
-        return [sys.executable, "-m", "pip", "install", "--upgrade", spec]
+def _core_command(spec: str, python: str) -> list[str] | None:
+    """Upgrade ``spec`` in ``python``'s environment (uv if present, else that Python's pip)."""
     uv = shutil.which("uv")
     if uv:
-        return [uv, "pip", "install", "--upgrade", "--python", sys.executable, spec]
+        return [uv, "pip", "install", "--upgrade", "--python", python, spec]
+    if python != sys.executable or importlib.util.find_spec("pip") is not None:
+        return [python, "-m", "pip", "install", "--upgrade", spec]
     return None
 
 
-def _plan(plugin: dict[str, Any], from_main: bool) -> tuple[list[list[str]], list[str]]:
+def _plan(plugin: dict[str, Any], core: dict[str, Any], from_main: bool) -> tuple[list[list[str]], list[str]]:
     steps: list[list[str]] = []
     notes: list[str] = []
     if plugin.get("git"):
@@ -132,13 +162,16 @@ def _plan(plugin: dict[str, Any], from_main: bool) -> tuple[list[list[str]], lis
             notes.append("plugin checkout has local changes: not pulled (commit or stash them first)")
     else:
         notes.append("plugin is not a git checkout: reinstall it to update the plugin itself")
-    cmd = _core_command(CORE_MAIN_SPEC if from_main else CORE_SPEC)
+    python = core.get("python") or sys.executable
+    cmd = _core_command(CORE_MAIN_SPEC if from_main else CORE_SPEC, python)
     if cmd:
         steps.append(cmd)
     else:
         notes.append(
-            f'no pip or uv for {sys.executable}: install the core yourself with "{CORE_SPEC}" in that Python'
+            f'no pip or uv for {python}: install the core yourself with "{CORE_SPEC}" in that Python'
         )
+    if core.get("hermes_pm"):
+        notes.append(PM_NOTE)
     return steps, notes
 
 
@@ -164,6 +197,8 @@ def run_update(
         lines.append(f"  core    {CORE_DIST} {core['version']}{traps}")
     else:
         lines.append(f"  core    not installed in this Python ({sys.executable})")
+    if core.get("hermes_pm"):
+        lines.append("          (in a Hermes-managed plugin environment)")
 
     if check:
         lines += ["", "Asking pypi.org, raw.githubusercontent.com and api.github.com (read-only)..."]
@@ -192,7 +227,7 @@ def run_update(
                 extra = f" ({remote['core_main_traps'] - have} not in yours; --from-main installs them)"
             lines.append(f"  traps   main has {remote['core_main_traps']}{extra}")
 
-    steps, notes = _plan(plugin, from_main)
+    steps, notes = _plan(plugin, core, from_main)
     result["plan"] = {"steps": steps, "notes": notes}
     if not yes:
         lines += ["", "To update (terminal only), this would run:"]

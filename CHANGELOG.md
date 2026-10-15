@@ -8,6 +8,9 @@ Every pull request that changes the plugin, its tests or its docs adds a line he
 
 Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). Status: experimental until the owner signs off Gate A on a real install.
 
+### Fixed — `update --yes` installs where the core actually loads from (2026-10-15)
+- Hermes 0.22 runs plugins on a shared base interpreter and adds a per-plugin-set environment (`installs/<id>/environments/<hash>/venv`) to `sys.path`, so upgrading `sys.executable` (as #13 did) changed the shared interpreter instead. The core upgrade now targets the environment that holds the imported `minefield` package, and says when Hermes manages it: Hermes rebuilds that environment from PyPI when plugins change, so a `--from-main` install lasts until then and a PyPI release is what reaches every install.
+
 ### Added — update Minefield from the menu; submit with a `gh` login (2026-10-15)
 - `update` (menu item 9): shows the plugin version and checkout, the core version and its trap count, offline. `--check` asks PyPI and GitHub what is newest (read-only, names the hosts first) and says how many traps on core `main` are not in yours. `--yes` updates from a terminal only (chat can show and check, never install): `git pull --ff-only` for a clean plugin checkout, then a core upgrade in the Python that runs Hermes (pip, or uv when the environment has no pip); `--from-main` installs the core from GitHub `main`. Every command is printed, shell-quoted, before it runs; a failed step stops the run.
 - Issue submission and duplicate search fall back to the GitHub CLI login (`gh auth token`) when `GITHUB_TOKEN` / `GH_TOKEN` are unset; before, a user signed in only with `gh auth login` got `missing_github_token`. That error now says how to sign in. Tests disable the fallback by default so a developer's real login can never reach a submission test.
