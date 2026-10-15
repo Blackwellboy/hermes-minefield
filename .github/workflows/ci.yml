@@ -90,6 +90,10 @@ jobs:
             ref: f97608f178d1ffeca59860195ab7da295f7c8e5f
             python: "3.11"
             experimental: false
+          - label: "release v0.22.1"
+            ref: 297552a9d646119871391d202509822cd86330df
+            python: "3.14"   # 0.22 declares its pip dependencies for Python >= 3.14
+            experimental: false
           - label: "main (early warning)"
             ref: main
             # Since 2026-09-24 Hermes main declares its pip dependencies only for

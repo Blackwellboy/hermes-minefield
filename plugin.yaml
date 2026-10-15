@@ -10,7 +10,7 @@ author: Blackwellboy
 license: MIT
 kind: standalone
 # Proven by the hermes-compat CI matrix (v2026.8.31 .. v2026.9.24); widen only with CI proof.
-requires_hermes: ">=0.21,<0.22"
+requires_hermes: ">=0.21,<0.23"
 python_dependencies:
   # From PyPI so `hermes pm repair` can install it: Hermes PM does not manage direct-URL
   # (git+https) requirements. CI also tests the exact core commit in .github/workflows/ci.yml.

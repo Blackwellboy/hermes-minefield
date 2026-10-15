@@ -75,7 +75,7 @@ Loop detection mirrors Hermes's own tool-loop guardrails: polling tools such as 
 
 ## Install
 
-Requires Hermes `>=0.21,<0.22`, the range CI proves (see "Compatibility" below).
+Requires Hermes `>=0.21,<0.23`, the range CI proves (see "Compatibility" below).
 
 ```bash
 # 1) Minefield (not on PyPI) at the version CI tests against
@@ -163,6 +163,7 @@ CI (`hermes-compat`) loads the plugin into, and replays the hook contract agains
 - Hermes `v2026.8.31` (0.21.0, the minimum),
 - the pinned known-good commit,
 - the latest release `v2026.9.24` (0.21.5),
+- release `v0.22.1` (Python 3.14),
 - Hermes `main` (non-blocking).
 
 It also runs the Gate A scenario suite, with real processes, on each of them. `tests/test_hermes_contract.py` reads Hermes's own source and fails if any hook argument the plugin relies on disappears.
