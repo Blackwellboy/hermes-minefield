@@ -67,9 +67,16 @@ MENU: tuple[Item, ...] = (
     Item(
         "8",
         "contribute",
-        "Draft a trap report from an incident",
+        "Report a trap: a sanitized draft from an incident, sent to Minefield only when you approve",
         "nothing (a local draft; never uploads without your explicit approval)",
         "/minefield 8",
+    ),
+    Item(
+        "9",
+        "update",
+        "Update Minefield: what you have, what is newest",
+        "nothing; --check asks PyPI and GitHub (read-only); installing is terminal-only (--yes)",
+        "/minefield 9   or   /minefield 9 --check",
     ),
 )
 

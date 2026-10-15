@@ -8,6 +8,11 @@ Every pull request that changes the plugin, its tests or its docs adds a line he
 
 Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). Status: experimental until the owner signs off Gate A on a real install.
 
+### Added — update Minefield from the menu; submit with a `gh` login (2026-10-15)
+- `update` (menu item 9): shows the plugin version and checkout, the core version and its trap count, offline. `--check` asks PyPI and GitHub what is newest (read-only, names the hosts first) and says how many traps on core `main` are not in yours. `--yes` updates from a terminal only (chat can show and check, never install): `git pull --ff-only` for a clean plugin checkout, then a core upgrade in the Python that runs Hermes (pip, or uv when the environment has no pip); `--from-main` installs the core from GitHub `main`. Every command is printed, shell-quoted, before it runs; a failed step stops the run.
+- Issue submission and duplicate search fall back to the GitHub CLI login (`gh auth token`) when `GITHUB_TOKEN` / `GH_TOKEN` are unset; before, a user signed in only with `gh auth login` got `missing_github_token`. That error now says how to sign in. Tests disable the fallback by default so a developer's real login can never reach a submission test.
+- Menu item 8 reads "Report a trap" and says it is sent only on approval.
+
 ### Fixed — runs on Hermes 0.22 (2026-10-15)
 - Hermes 0.22 enforces `requires_hermes`, so the plugin's `>=0.21,<0.22` made 0.22.1 refuse to load it ("requires hermes >=0.21,<0.22, running 0.22.1") and `/minefield` disappeared after updating. Range widened to `<0.23` after the full suite passed on 0.22.1 (319 passed) and Gate A ran 7/7 against real 0.22.1 processes; `hermes-compat` CI gains a `release v0.22.1` row on Python 3.14.
 

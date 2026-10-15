@@ -17,7 +17,13 @@ from ..contribute.candidate import build_candidate, save_candidate
 from ..incident.store import list_incidents, load_incident, update_incident_status, valid_incident_id
 from ..issues.dedupe import search_local
 from ..issues.draft import DraftError, IssueDraft, build_issue_draft, load_draft, save_draft
-from ..issues.github_client import dedupe_terms, parse_issue_url, search_issues, submit_issue
+from ..issues.github_client import (
+    NO_TOKEN_HINT,
+    dedupe_terms,
+    parse_issue_url,
+    search_issues,
+    submit_issue,
+)
 from ..issues.routing import resolve_contribute_target
 from ..paths import hermes_home
 from ..target import resolve_target
@@ -113,6 +119,8 @@ def _submit(
                 lines.append(f"Linked {draft.incident_id} → {link['repo']}#{link['number']}")
     else:
         lines.append(f"\nSubmit blocked/failed: {sub.error}")
+        if sub.error == "missing_github_token":
+            lines.append(f"Not sent: no GitHub login found; {NO_TOKEN_HINT}.")
 
 
 def run_submit_draft(
