@@ -230,3 +230,41 @@ def test_missing_login_tells_the_user_how_to_sign_in(monkeypatch):
     )
     assert res.error == "missing_github_token"
     assert "gh auth login" in G.NO_TOKEN_HINT
+
+
+# --- the core lives in a Hermes-managed environment, not in sys.executable ------------
+
+
+def _fake_core_at(monkeypatch, tmp_path, parts):
+    import types
+
+    venv = tmp_path.joinpath(*parts)
+    (venv / "bin").mkdir(parents=True)
+    (venv / "pyvenv.cfg").write_text("home = /base\n", encoding="utf-8")
+    (venv / "bin" / "python").write_text("", encoding="utf-8")
+    pkg = venv / "lib" / "python3.14" / "site-packages" / "minefield"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    monkeypatch.setitem(sys.modules, "minefield", types.SimpleNamespace(__file__=str(pkg / "__init__.py")))
+    return venv
+
+
+def test_core_python_finds_the_hermes_managed_environment(monkeypatch, tmp_path):
+    venv = _fake_core_at(monkeypatch, tmp_path, ["installs", "x", "environments", "abc123", "venv"])
+    python, managed = U._core_python()
+    assert python == str(venv / "bin" / "python") and python != sys.executable
+    assert managed is True
+
+
+def test_core_python_in_a_plain_venv_is_not_managed(monkeypatch, tmp_path):
+    venv = _fake_core_at(monkeypatch, tmp_path, ["myproject", ".venv"])
+    assert U._core_python() == (str(venv / "bin" / "python"), False)
+
+
+def test_plan_installs_into_the_core_environment_and_says_hermes_manages_it(monkeypatch):
+    core = {"python": "/envs/abc/venv/bin/python", "hermes_pm": True, "installed": True, "version": "0.2.1"}
+    plugin = {"version": "0.2.0", "dir": "/plug", "git": False}
+    steps, notes = U._plan(plugin, core, from_main=True)
+    assert steps and "/envs/abc/venv/bin/python" in steps[-1] and U.CORE_MAIN_SPEC in steps[-1]
+    assert sys.executable not in steps[-1]
+    assert U.PM_NOTE in notes
