@@ -34,7 +34,8 @@ Not sure where to start? Type **`/minefield`** on its own in a Hermes chat (or `
 ```
 1 quick check (≤5 requests)   2 what just happened (wtf)   3 look up a symptom
 4 scan my Hermes config       5 full Doctor (needs --yes)  6 status
-7 incidents and issues        8 draft a trap report (never uploads on its own)
+7 incidents and issues        8 report a trap (sends only when you approve)
+9 update Minefield (check what is newest; installing is terminal-only)
 ```
 
 | CLI (terminal) | Slash (inside a Hermes chat) | What it does |
@@ -48,6 +49,7 @@ Not sure where to start? Type **`/minefield`** on its own in a Hermes chat (or `
 | `hermes minefield incident` | `/minefield incident` | Alias for `wtf` |
 | `hermes minefield contribute` | `/minefield contribute` | Sanitized candidate and optional GitHub issue **draft** |
 | `hermes minefield issues` | `/minefield issues` | Local incidents and linked GitHub status (`--refresh`) |
+| `hermes minefield update` | `/minefield update` | What you have and what is newest. Offline by default; `--check` asks PyPI and GitHub (read-only); `--yes` updates, terminal only: `git pull --ff-only` for a clean plugin checkout, then upgrades the core in the Python that runs Hermes (`--from-main` for traps merged since the last release). Restart Hermes afterwards |
 | `hermes minefield status` | `/minefield status` | Fingerprint, cached verdict, recorder health |
 | `hermes minefield prune` | `/minefield prune` | Delete old local incidents, candidates and drafts (`--older-than 30d`, `--dry-run`) |
 | `hermes minefield clear-cache` | `/minefield clear-cache` | Clear the Lite result cache |
@@ -141,6 +143,7 @@ The recorder writes one segment file per Hermes process (`recorder/events-<pid>-
 
 - No automatic upload, and model output can never approve anything.
 - A draft is saved with the SHA-256 of its exact title and body. `hermes minefield contribute --submit-draft <id> --i-approve-submit --submit` sends **exactly** those bytes. Tampered drafts are refused.
+- Sending needs a GitHub login: `GITHUB_TOKEN` / `GH_TOKEN`, or, if neither is set, the GitHub CLI's login (`gh auth login`). The token is never printed or saved.
 - Without `--submit` it's a dry run. From a chat surface, real submission is refused unless `allow_submit_from_chat: true`, because anyone in a room can type slash commands.
 - The target repo comes from a deterministic classification → repo map, or an explicit `--repo`. Model-suggested repos are ignored. The recommended repo is only a recommendation, not approval.
 - Remote duplicate search is opt-in (`--remote-dedupe`), and it prints the exact sanitized terms before sending them.

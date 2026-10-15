@@ -38,6 +38,13 @@ def fresh_recorder(tmp_hermes_home):
 
 
 @pytest.fixture(autouse=True)
+def _no_gh_cli_login(monkeypatch):
+    """A developer's real `gh` login must never reach a test that might submit an issue.
+    Tests of the fallback itself patch the helper back."""
+    monkeypatch.setattr("hermes_minefield.issues.github_client._gh_cli_token", lambda: None)
+
+
+@pytest.fixture(autouse=True)
 def _isolate_hermes_runtime(monkeypatch):
     """Unit tests must not depend on ambient provider credentials (AWS_*, OPENAI_*,
     ...) that Hermes's resolution ladder would pick up. Tests of that path patch

@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
+import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -26,6 +28,31 @@ class SubmitResult:
     url: str | None
     error: str | None
     dry_run: bool
+
+
+NO_TOKEN_HINT = "sign in with `gh auth login`, or set GITHUB_TOKEN, then run the same command again"
+
+
+def _gh_cli_token() -> str | None:
+    """The GitHub CLI's login token (``gh auth token``), or None. Never logged."""
+    gh = shutil.which("gh")
+    if not gh:
+        return None
+    try:
+        out = subprocess.run([gh, "auth", "token"], capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    tok = (out.stdout or "").strip()
+    return tok if out.returncode == 0 and tok and not any(c.isspace() for c in tok) else None
+
+
+def github_token(token: str | None = None) -> str | None:
+    """An explicit token, else ``GITHUB_TOKEN`` / ``GH_TOKEN``, else the ``gh`` CLI login.
+
+    Most people who use GitHub from a terminal are signed in with ``gh auth login`` and
+    have no token in their environment; without this fallback submission failed for them.
+    """
+    return token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or _gh_cli_token()
 
 
 def assert_repo_allowed(
@@ -68,7 +95,7 @@ def submit_issue(
     if dry_run:
         return SubmitResult(True, f"dry-run://{repo}/issues#preview", None, dry_run=True)
 
-    tok = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    tok = github_token(token)
     if not tok:
         return SubmitResult(False, None, "missing_github_token", dry_run=False)
 
@@ -102,7 +129,7 @@ def refresh_issue_status(
     token: str | None = None,
     linked_resolution: str | None = None,
 ) -> dict[str, Any]:
-    tok = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    tok = github_token(token)
     url = f"https://api.github.com/repos/{repo}/issues/{int(number)}"
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "hermes-minefield"}
     if tok:
@@ -151,7 +178,7 @@ def search_issues(
     q = f"repo:{repo} is:issue in:title " + " ".join(terms)
     url = "https://api.github.com/search/issues?per_page=3&q=" + urllib.parse.quote(q)
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "hermes-minefield"}
-    tok = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    tok = github_token(token)
     if tok:
         headers["Authorization"] = f"Bearer {tok}"
     try:

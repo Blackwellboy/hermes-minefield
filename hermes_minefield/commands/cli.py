@@ -82,6 +82,13 @@ def register_cli(subparser: argparse.ArgumentParser) -> None:
     p_scan = subs.add_parser("scan", help="Read-only scan for known traps (chat: your Hermes config only)")
     p_scan.add_argument("paths", nargs="*", help="files or folders (CLI only; default: Hermes config)")
 
+    p_upd = subs.add_parser("update", help="What you have and what is newest; --yes updates (terminal only)")
+    p_upd.add_argument("--check", action="store_true", help="ask PyPI and GitHub what is newest (read-only)")
+    p_upd.add_argument("--yes", "-y", action="store_true", help="update now (terminal only)")
+    p_upd.add_argument(
+        "--from-main", action="store_true", help="install the core from GitHub main (unreleased traps)"
+    )
+
     subs.add_parser("clear-cache", help="Clear fingerprint Lite cache")
 
     p_prune = subs.add_parser("prune", help="Delete old local incidents/candidates/drafts")

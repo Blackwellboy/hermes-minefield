@@ -26,6 +26,7 @@ from .issues import run_issues
 from .prune import run_prune
 from .scan import run_scan
 from .status import run_status
+from .update import run_update
 from .wtf import run_wtf
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ USAGE = (
     "  /minefield incident [2m]\n"
     "  /minefield contribute [--incident ID] [--github --repo owner/name]\n"
     "  /minefield issues [--refresh]\n"
+    "  /minefield update [--check]        (installing: hermes minefield update --yes)\n"
     "  /minefield prune [--older-than 30d] [--dry-run]\n"
     "  /minefield clear-cache\n"
 )
@@ -181,6 +183,14 @@ def run_command(args: Any, *, surface: str = "cli") -> dict[str, Any]:
         return _guard(run_guide, symptom=g("symptom"), limit=int(g("limit", 5) or 5))
     if cmd == "scan":
         return _guard(run_scan, paths=g("paths"), surface=surface)
+    if cmd == "update":
+        return _guard(
+            run_update,
+            check=bool(g("check", False)),
+            yes=bool(g("yes", False)),
+            from_main=bool(g("from_main", False)),
+            surface=surface,
+        )
     if cmd == "clear-cache":
         return _guard(_clear_cache)
     if cmd == "prune":
