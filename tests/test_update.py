@@ -154,6 +154,22 @@ def test_a_failed_step_stops_the_run(git_checkout, monkeypatch):
     assert "failed (exit 1); stopped here" in out["text"]
 
 
+def test_printed_commands_show_home_as_tilde_and_stay_quoted(monkeypatch):
+    monkeypatch.setattr(U.Path, "home", staticmethod(lambda: U.Path("/home/someone")))
+    line = U._show(
+        [
+            "/home/someone/.local/bin/uv",
+            "pip",
+            "install",
+            "--python",
+            "/home/someone/env/bin/python",
+            "pkg>=1,<2",
+        ]
+    )
+    assert line == "~/.local/bin/uv pip install --python ~/env/bin/python 'pkg>=1,<2'"
+    assert U._show(["/home/someone x/y"]) == "'/home/someone x/y'"  # quoted tokens keep the real path
+
+
 def test_version_ordering_ignores_local_labels():
     assert U._vkey("0.2.1+f4db58fb") == (0, 2, 1)
     assert U._vkey("0.2.2") > U._vkey("0.2.1+f4db58fb")

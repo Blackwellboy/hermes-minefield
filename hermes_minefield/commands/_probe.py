@@ -56,11 +56,26 @@ def evaluate_run(result: Any, summary_fn, *, secrets: tuple[str, ...] = ()) -> P
     executed = int(getattr(result, "requests_executed", 0) or 0)
     budget = getattr(result, "request_budget", None)
 
-    if getattr(result, "budget_exceeded", False) or (budget is not None and executed > budget):
+    if budget is not None and executed > budget:
         return ProbeOutcome(
             ok=False,
             verdict=V.UNKNOWN,
             reason=f"HARD_BUDGET_VIOLATION: executed {executed} > budget {budget}; results discarded",
+            summary=None,
+            requests_executed=executed,
+            request_budget=budget,
+            error="budget_exceeded",
+        )
+    if getattr(result, "budget_exceeded", False):
+        # The core refused a request at the cap: nothing over the budget was sent, but the
+        # plan did not finish, so the partial results are not a verdict.
+        return ProbeOutcome(
+            ok=False,
+            verdict=V.UNKNOWN,
+            reason=(
+                f"stopped at the {budget}-request cap before the plan finished (a probe needed more "
+                f"requests than planned; {executed} sent, none over the cap); results discarded"
+            ),
             summary=None,
             requests_executed=executed,
             request_budget=budget,
