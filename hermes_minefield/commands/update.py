@@ -41,6 +41,18 @@ CHAT_APPLY_REFUSED = (
 )
 
 
+def _show(argv: list[str]) -> str:
+    """A command line to print: shell-quoted, with the home directory shown as ``~``."""
+    home = str(Path.home())
+    out = []
+    for arg in argv:
+        q = shlex.quote(arg)
+        if q == arg and (arg == home or arg.startswith(home + "/")):
+            q = "~" + arg[len(home) :]
+        out.append(q)
+    return " ".join(out)
+
+
 def _run(argv: list[str], timeout: float = 30) -> tuple[int, str]:
     try:
         out = subprocess.run(argv, capture_output=True, text=True, timeout=timeout, check=False)
@@ -64,7 +76,8 @@ def _plugin_local() -> dict[str, Any]:
 
 PM_NOTE = (
     "Hermes manages this environment (`hermes pm`) and rebuilds it from PyPI when plugins "
-    "change; an install from --from-main lasts until that rebuild"
+    "change, holding back releases younger than 3 days (its exclude-newer quarantine); "
+    "an install from --from-main or of a newer release lasts until that rebuild"
 )
 
 
@@ -231,7 +244,7 @@ def run_update(
     result["plan"] = {"steps": steps, "notes": notes}
     if not yes:
         lines += ["", "To update (terminal only), this would run:"]
-        lines += [f"  $ {shlex.join(s)}" for s in steps] + [f"  - {n}" for n in notes]
+        lines += [f"  $ {_show(s)}" for s in steps] + [f"  - {n}" for n in notes]
         lines.append("Run: hermes minefield update --yes   (add --from-main for traps not yet released)")
         if not check:
             lines.append("Check what is newest first: hermes minefield update --check")
@@ -244,7 +257,7 @@ def run_update(
     lines.append("")
     ran: list[dict[str, Any]] = []
     for argv in steps:
-        lines.append(f"$ {shlex.join(argv)}")
+        lines.append(f"$ {_show(argv)}")
         rc, output = _run(argv, timeout=600)
         ran.append({"argv": argv, "rc": rc})
         tail = "\n".join(output.splitlines()[-3:])

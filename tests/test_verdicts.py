@@ -112,6 +112,17 @@ def test_budget_violation_is_discarded(configured, monkeypatch):
     out = run_check()
     assert out["verdict"] == V.UNKNOWN
     assert "HARD_BUDGET_VIOLATION" in out["text"]
+
+
+def test_core_stopping_at_the_cap_is_not_reported_as_exceeding_it(configured, monkeypatch):
+    """Core 0.2.1 on some stacks planned 5 requests and its probes asked for a 6th, which the
+    core refused (budget_exceeded=True with executed == budget). That is not "5 > 5"."""
+    fake_minefield(monkeypatch, FakeResult(requests_executed=5, request_budget=5, budget_exceeded=True))
+    out = run_check()
+    assert out["verdict"] == V.UNKNOWN and out["ok"] is False
+    assert get_entry(cache_key()) is None
+    assert "HARD_BUDGET_VIOLATION" not in out["text"]
+    assert "stopped at the 5-request cap" in out["text"] and "none over the cap" in out["text"]
     assert get_entry(cache_key()) is None
 
 
