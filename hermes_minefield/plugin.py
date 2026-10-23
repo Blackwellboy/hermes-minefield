@@ -53,11 +53,19 @@ def register(ctx: Any) -> None:
         ),
     )
 
+    # Where this Hermes can ask (ctx.ask_choice: buttons in messaging chats, the clarify panel in
+    # local sessions), a bare /minefield asks the user to pick an item. Older Hermes has no
+    # ask_choice, and a surface that cannot ask answers None: both get the numbered list.
+    ask = getattr(ctx, "ask_choice", None)
+
+    def _slash(raw_args: str) -> str:
+        return handle_slash(raw_args, ask=ask if callable(ask) else None)
+
     ctx.register_command(
         "minefield",
-        handler=handle_slash,
+        handler=_slash,
         description="Minefield: model-serving trap checks (no args = numbered menu)",
-        args_hint="[1-8] | guide <symptom> | scan | check | doctor | wtf | contribute | issues | status | help",
+        args_hint="[1-9] | guide <symptom> | scan | check | doctor | wtf | contribute | issues | status | help",
     )
 
     # Flight recorder hooks — metadata only; never block the agent.
