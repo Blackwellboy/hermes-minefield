@@ -38,9 +38,11 @@ Not sure where to start? Type **`/minefield`** on its own in a Hermes chat (or `
 9 update Minefield (check what is newest; installing is terminal-only)
 ```
 
+Where Hermes can ask (buttons in Telegram, Discord and Slack chats; the clarify panel in a CLI, TUI or desktop session, on Hermes builds whose plugin context has `ask_choice`), a bare `/minefield` asks you to pick an item and runs it. The full Doctor asks once more before it sends anything, and a symptom lookup tells you what to type. Everywhere else, or if you dismiss the question, you get the list above. `/minefield menu` always lists.
+
 | CLI (terminal) | Slash (inside a Hermes chat) | What it does |
 |---|---|---|
-| `hermes minefield` / `menu` | `/minefield` | The numbered menu |
+| `hermes minefield` / `menu` | `/minefield` | The numbered menu; in a chat that can ask, a picker |
 | `hermes minefield guide <symptom>` | `/minefield guide <symptom>` | Look up a plain-words symptom in the trap registry. Offline |
 | `hermes minefield scan [path ...]` | `/minefield scan` | Read-only scan for known traps. Chat scans only your Hermes config; naming paths is CLI-only |
 | `hermes minefield check` | `/minefield check` | Lite preflight: at most 5 requests; cached per endpoint fingerprint (30-day TTL) |
