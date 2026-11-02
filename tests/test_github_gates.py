@@ -81,14 +81,14 @@ def test_draft_redacts_secrets(tmp_hermes_home):
         artifact=art,
         target_repo="NousResearch/hermes-agent",
         environment={
-            "base_url": "http://user:secretpass@10.0.0.5:8007/v1",
+            "base_url": "http://user:secretpass@203.0.113.5:8007/v1",
             "api_key": "sk-should-not-appear-in-body-XXXXXXXX",
         },
     )
     body = draft.body
     assert "secretpass" not in body
     assert "sk-should-not-appear" not in body
-    assert "10.0.0.5" not in body
+    assert "203.0.113.5" not in body
 
 
 def test_minefield_draft_matches_public_issue_form_shape(tmp_hermes_home):

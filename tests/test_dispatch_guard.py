@@ -33,7 +33,7 @@ def test_slash_help_is_returned_as_text(tmp_hermes_home):
 
 
 def test_slash_rejects_base_url(tmp_hermes_home):
-    out = slash_result("check --base-url http://10.0.0.1:8000/v1")
+    out = slash_result("check --base-url http://203.0.113.1:8000/v1")
     assert out["ok"] is False
     assert "CLI-only" in out["text"]
 
