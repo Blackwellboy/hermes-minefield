@@ -8,6 +8,9 @@ Every pull request that changes the plugin, its tests or its docs adds a line he
 
 Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). Status: experimental until the owner signs off Gate A on a real install.
 
+### Changed: neutral test fixtures (2026-11-02)
+- Redaction and guard tests now use `/home/alice` and documentation-range addresses (`203.0.113.x`, TEST-NET-3) as fixtures instead of a real-looking home directory and private-range addresses. Assertions are unchanged.
+
 ### Fixed — clearer quick-check and update output (2026-10-15)
 - When the core refuses a request at the cap (`budget_exceeded` with requests equal to the budget), `check` said "HARD_BUDGET_VIOLATION: executed 5 > budget 5". It now says it stopped at the 5-request cap before the plan finished, with none sent over the cap; the result is still UNKNOWN and not cached. A real overrun keeps the old message. Seen with core 0.2.1 on a TabbyAPI lane; core 0.2.2 completes the same plan within 5.
 - `update` prints the home directory as `~` in its command lines (unquoted tokens only, so they still paste).
