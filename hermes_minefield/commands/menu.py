@@ -54,7 +54,7 @@ MENU: tuple[Item, ...] = (
         "doctor",
         "Full Doctor on the model endpoint",
         "the model endpoint: dozens of requests, only after you add --yes",
-        "/minefield 5   (shows the plan)   then   /minefield 5 --yes",
+        "/minefield 5   (says what it would do, sends nothing)   then   /minefield 5 --yes",
     ),
     Item("6", "status", "What Minefield sees: endpoint, cache, recorder", "nothing", "/minefield 6"),
     Item(

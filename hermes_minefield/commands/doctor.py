@@ -19,7 +19,11 @@ def run_doctor(
     yes: bool = False,
     max_requests: int | None = None,
     detect: bool = True,
+    confirm_always: bool = False,
 ) -> dict[str, Any]:
+    """``confirm_always`` (chat surfaces): never run without ``yes``, whatever the server's
+    concurrency. The menu promises that the Doctor sends nothing until ``--yes``; on a multi-slot
+    server the concurrency guard alone would let a bare ``/minefield doctor`` run it."""
     try:
         target = resolve_target(base_url=base_url, model=model)
     except ValueError as e:
@@ -41,13 +45,18 @@ def run_doctor(
         "source": info.source,
         "detail": info.detail,
     }
-    if requires_doctor_confirm(info) and not yes:
+    if (confirm_always or requires_doctor_confirm(info)) and not yes:
+        guard = doctor_guard_message(info) or (
+            "The full Doctor sends dozens of requests to this model endpoint.\n"
+            f"Detected: {info.detail} (source={info.source}).\n"
+            "From a chat it runs only when you confirm: /minefield doctor --yes"
+        )
         return {
             "ok": False,
             "blocked": True,
             "verdict": V.UNKNOWN,
             "concurrency": concurrency,
-            "text": f"{doctor_guard_message(info)}\n\n{V.line(V.UNKNOWN, 'not run — needs --yes')}",
+            "text": f"{guard}\n\n{V.line(V.UNKNOWN, 'not run — needs --yes')}",
             "requests_executed": 0,
         }
 

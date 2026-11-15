@@ -12,7 +12,7 @@ hermes-minefield          check / doctor adapter, flight recorder, wtf, contribu
 Hermes
 ```
 
-> **Status: experimental (0.2.0).** 0.1.x read the wrong Hermes hook arguments and could report the opposite of what happened. 0.2.0 fixes that and is tested against real Hermes processes on 0.21.0–0.21.5 and 0.21.7 (Gate A 7/7 on 0.21.7, 2026-10-15). See [CHANGELOG.md](CHANGELOG.md) and [docs/IMPROVEMENT_PLAN.md](docs/IMPROVEMENT_PLAN.md).
+> **Status: experimental (0.2.0).** 0.1.x read the wrong Hermes hook arguments and could report the opposite of what happened. 0.2.0 fixes that and is tested against real Hermes processes on 0.21.0–0.21.5, 0.21.7, 0.22.1 and 0.23.1 (Gate A 7/7 on 0.23.1, 2026-11-15). See [CHANGELOG.md](CHANGELOG.md) and [docs/IMPROVEMENT_PLAN.md](docs/IMPROVEMENT_PLAN.md).
 
 ## The integrity rule
 
@@ -44,7 +44,7 @@ Not sure where to start? Type **`/minefield`** on its own in a Hermes chat (or `
 | `hermes minefield guide <symptom>` | `/minefield guide <symptom>` | Look up a plain-words symptom in the trap registry. Offline |
 | `hermes minefield scan [path ...]` | `/minefield scan` | Read-only scan for known traps. Chat scans only your Hermes config; naming paths is CLI-only |
 | `hermes minefield check` | `/minefield check` | Lite preflight: at most 5 requests; cached per endpoint fingerprint (30-day TTL) |
-| `hermes minefield doctor` | `/minefield doctor` | Full Doctor. Explicit only; asks for `--yes` on single-slot or unknown-concurrency servers |
+| `hermes minefield doctor` | `/minefield doctor` | Full Doctor. Explicit only. In a chat it never runs without `--yes`; in a terminal it asks for `--yes` on single-slot or unknown-concurrency servers |
 | `hermes minefield wtf [5m]` | `/minefield wtf [5m]` | Freeze the flight recorder and explain what just happened (current session by default; `--session all`) |
 | `hermes minefield incident` | `/minefield incident` | Alias for `wtf` |
 | `hermes minefield contribute` | `/minefield contribute` | Sanitized candidate and optional GitHub issue **draft** |
@@ -77,10 +77,10 @@ Loop detection mirrors Hermes's own tool-loop guardrails: polling tools such as 
 
 ## Install
 
-Requires Hermes `>=0.21,<0.23`, the range CI proves (see "Compatibility" below).
+Requires Hermes `>=0.21,<0.24`, the range CI proves (see "Compatibility" below).
 
 ```bash
-# 1) Minefield (not on PyPI) at the version CI tests against
+# 1) Minefield, from PyPI, in the range CI tests against
 pip install "model-serving-minefield>=0.2.1,<0.3"
 
 # 2) The plugin, pinned to a release commit
@@ -158,7 +158,7 @@ With `expose_agent_tool: true`, the model can call `minefield_recent_incident` w
 - `HERMES_PLUGINS_DEBUG=1 hermes minefield status` shows plugin loading and any hook errors.
 - `wtf` says `UNKNOWN — no recorder events`: either the plugin isn't enabled in the Hermes process that did the work, or nothing happened in that window. Try `hermes minefield wtf 30m --session all`.
 - `check` says `UNKNOWN — endpoint could not be tested`: the server is down or unreachable. Nothing was cached.
-- `/minefield is not available on the shared gateway yet` in the **modern TUI or the desktop app** (Hermes 0.22): those chats run on Hermes's shared gateway, whose `slash.exec` serves only its reviewed built-in commands and refuses plugin commands (`gateway/session_commands.py`, `command_verdict`). Run the same thing from a terminal (`hermes minefield <command>`, identical output and guards), or let the agent use Minefield's MCP tools in chat (`hermes mcp add minefield --command minefield-mcp`).
+- `/minefield is not available on the shared gateway yet` in the **modern TUI or the desktop app**: this is Hermes 0.22 only, and Hermes 0.23 runs plugin commands there, so updating Hermes fixes it. On 0.22 those chats run on Hermes's shared gateway, whose `slash.exec` serves only its reviewed built-in commands and refuses plugin commands (`gateway/session_commands.py`, `command_verdict`). Run the same thing from a terminal (`hermes minefield <command>`, identical output and guards), or let the agent use Minefield's MCP tools in chat (`hermes mcp add minefield --command minefield-mcp`).
 - After a release, `hermes pm repair` may still install the previous core: Hermes PM ignores packages uploaded in the last 3 days (`exclude-newer` quarantine). `hermes minefield update --yes` installs the newest release now; a later environment rebuild picks it up once the quarantine passes.
 
 ## Compatibility
@@ -169,9 +169,10 @@ CI (`hermes-compat`) loads the plugin into, and replays the hook contract agains
 - the pinned known-good commit,
 - the latest release `v2026.9.24` (0.21.5),
 - release `v0.22.1` (Python 3.14),
+- release `v0.23.1` (Python 3.14, installed with uv so Hermes's own dependency overrides apply),
 - Hermes `main` (non-blocking).
 
-It also runs the Gate A scenario suite, with real processes, on each of them. `tests/test_hermes_contract.py` reads Hermes's own source and fails if any hook argument the plugin relies on disappears.
+It also runs the Gate A scenario suite, with real processes, on each of them. The 0.22 and 0.23 lanes tag their pinned checkout with its release, because Hermes reads its version from release tags and an untagged checkout reports "unknown", which every `requires_hermes` range accepts. `tests/test_version_range.py` fails if the range in `plugin.yaml` rejects a release CI runs, or admits a minor version with no blocking lane. `tests/test_hermes_contract.py` reads Hermes's own source and fails if any hook argument the plugin relies on disappears.
 
 ## Development
 

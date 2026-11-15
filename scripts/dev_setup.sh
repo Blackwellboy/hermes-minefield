@@ -9,7 +9,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-MINEFIELD_REF="${MINEFIELD_REF:-12822f3ec6d8600df113e773d2e588f3659f0120}"
+MINEFIELD_REF="${MINEFIELD_REF:-fb3acb1fef11db8df2ba61d7946ce778b4ff4b7e}"
 HERMES_REF="${HERMES_REF:-d350422b15863fc4c0b7962b122b625a0271516c}"
 PYTHON="${PYTHON:-python3}"
 
