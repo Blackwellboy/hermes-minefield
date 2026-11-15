@@ -119,6 +119,7 @@ Hook runtime rules (`website/docs/user-guide/features/hooks.md`, section "Plugin
 
 - `ctx.register_cli_command(name, help, setup_fn, handler_fn=None, description="")`: the handler gets an `argparse.Namespace` and returns an int exit code.
 - `ctx.register_command(name, handler, description="", args_hint="", argument_mode=None)`: `handler(raw_args: str) -> str | None`. It may be **sync or async**. It can't shadow a built-in command.
+- `ctx.ask_choice(question, choices) -> str | None` (newer Hermes; absent on 0.21): from a **sync** slash-command handler, asks its user to pick one choice (a string, or `{value, label?, description?}`) with the surface's own clarify prompt. `None` when nothing can ask (a hook, a cron job, an async handler), when the user dismisses it or types something else, or when the clarify timeout passes. Feature-detect it with `getattr(ctx, "ask_choice", None)` and keep a text fallback.
 - `ctx.register_hook(name, callback)`: the name must be in `hermes_cli.plugins.VALID_HOOKS`.
 - `ctx.get_config(key, default)`: reads `plugins.entries.<plugin_id>.settings.<key>`, falling back to the legacy `.config.<key>`.
 - `ctx.on_unload(callback)`: cleanup when the plugin is unloaded or reloaded.
@@ -657,3 +658,4 @@ Principles: hooks are pure mappers; all I/O happens off the hot path; every clas
 - ~~Upstream: Hermes's own `.github/actions/plugin-validate` runs `pip install git+…hermes-agent`, which Hermes's `setup.py` build guard rejects outside Nix.~~ **Resolved upstream:** at `99a16153` the action builds Hermes in an isolated locked toolchain. CI now runs it as the `hermes-admission` job (added by owner PR #3). The `hermes-compat` matrix keeps the editable install for older refs.
 - Hermes `main` (after 0.21.5) declares its pip dependencies only for Python >= 3.14. Older interpreters get them from its locked `pm` toolchain. The `hermes-compat` main entry therefore runs on 3.14 (Gate A 7/7 there). Before widening `requires_hermes` past `<0.22`, decide how the plugin's CI installs that Hermes: 3.14, or the `pm` toolchain the upstream validate action uses.
 - `hermes plugins validate` is missing on Hermes 0.21.0, so the minimum-version CI entry runs the contract, loader and Gate A tests but not the validator.
+- ~~A bare `/minefield` could ask instead of listing where Hermes can ask.~~ **Done (2026-10-23):** `menu.interactive` over `ctx.ask_choice`, feature-detected in `register()`; the numbered list stays the answer everywhere else.

@@ -4,11 +4,20 @@
 exactly as if its subcommand had been typed, so every guard (``--base-url`` is
 CLI-only, the Doctor needs ``--yes``, nothing uploads without approval) still
 applies. Each item says what it touches before anything runs.
+
+Where this Hermes can ask (``ctx.ask_choice``: buttons in Telegram, Discord and
+Slack chats, the clarify panel in a CLI, TUI or desktop session), a bare
+``/minefield`` asks the user to pick an item and runs it (``interactive``).
+Everywhere else, and whenever nothing is picked, it shows the numbered list.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
+
+Asker = Callable[[str, list], str | None]  # ctx.ask_choice(question, choices) -> value | None
 
 
 @dataclass(frozen=True)
@@ -98,3 +107,61 @@ def translate(parts: list[str]) -> list[str]:
     if parts and parts[0] in BY_KEY:
         return [BY_KEY[parts[0]].command, *parts[1:]]
     return parts
+
+
+QUESTION = "Model Serving Minefield: what do you want to do?"
+DOCTOR_QUESTION = (
+    "The full Doctor sends dozens of requests to the model endpoint Hermes is using, and on a "
+    "single-slot server it has that server to itself for the whole run. Run it now?"
+)
+DOCTOR_CHOICES: tuple[dict[str, str], ...] = (
+    {"value": "run", "label": "Run it now", "description": "the same as /minefield 5 --yes"},
+    {"value": "cancel", "label": "Not now", "description": "sends nothing"},
+)
+CANCELLED = "Cancelled. Nothing was sent."
+
+
+def choices() -> list[dict[str, str]]:
+    """The menu as ``ctx.ask_choice`` options. The number is the value, so a typed number also
+    picks, and every option says what it touches before anything runs."""
+    out = [
+        {"value": item.key, "label": f"{item.key}. {item.title}", "description": f"touches {item.touches}"}
+        for item in MENU
+    ]
+    out.append({"value": "help", "label": "Help", "description": "every command and flag"})
+    return out
+
+
+def interactive(ask: Asker, run: Callable[[list[str]], dict[str, Any]]) -> dict[str, Any] | None:
+    """Ask the user to pick an item with the surface's own picker and run it exactly as
+    ``/minefield <number>``, so every guard still applies.
+
+    Returns None when nothing was picked (no picker on this surface, the question dismissed or
+    timed out, the picker failed): the caller then shows the numbered text menu, which is what
+    every surface got before. The Doctor asks once more before it sends anything, and a symptom
+    lookup needs words, so its pick says what to type.
+    """
+    try:
+        picked = ask(QUESTION, choices())
+    except Exception:
+        return None
+    key = str(picked or "").strip()
+    if key == "help":
+        return run(["help"])
+    item = BY_KEY.get(key)
+    if item is None:
+        return None
+    if item.command == "guide":
+        return {
+            "ok": True,
+            "text": f"Say what you are seeing after the number, in plain words, e.g.\n  {item.example}",
+        }
+    if item.command == "doctor":
+        try:
+            answer = ask(DOCTOR_QUESTION, list(DOCTOR_CHOICES))
+        except Exception:
+            answer = None
+        if answer != "run":
+            return {"ok": True, "text": CANCELLED}
+        return run([item.command, "--yes"])
+    return run([item.command])
