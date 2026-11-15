@@ -96,6 +96,7 @@ jobs:
             experimental: false
           - label: "main (early warning)"
             ref: main
+            installer: uv
             # Since 2026-09-24 Hermes main declares its pip dependencies only for
             # Python >= 3.14 (older interpreters get them from its own locked
             # toolchain), so an editable pip install needs 3.14 here.
@@ -126,12 +127,19 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      # Hermes blocks wheel builds outside Nix, so `pip install git+...` (and the
-      # upstream plugin-validate action that uses it) fails. Editable install works.
+      # Hermes blocks wheel builds outside Nix, so `pip install git+...` fails; an editable
+      # install works. From 0.23 Hermes pins Pillow 13 while its browser-harness dependency
+      # pins Pillow 12, and reconciles them in its own [tool.uv] overrides, which pip cannot
+      # read: those lanes install with uv, run from the Hermes checkout so the overrides apply.
       - name: Install Hermes + deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ./_deps/hermes-agent
+          if [ "${{ matrix.installer }}" = "uv" ]; then
+            python -m pip install uv
+            (cd _deps/hermes-agent && uv pip install --python "$(command -v python)" -e .)
+          else
+            python -m pip install -e ./_deps/hermes-agent
+          fi
           python -m pip install -e ./_deps/model-serving-minefield
           python -m pip install pytest PyYAML
           python -m pip install -e . --no-deps
