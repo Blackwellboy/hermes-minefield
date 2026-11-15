@@ -10,7 +10,7 @@ permissions:
 
 env:
   # Bump deliberately (and update docs/IMPROVEMENT_PLAN.md §2 / T0.5 in the same PR).
-  MINEFIELD_REF: f74e109256d61c08d083fbf532f409b4c20a3921  # 0.2.1 + menu (guide renderer, static scan)
+  MINEFIELD_REF: fb3acb1fef11db8df2ba61d7946ce778b4ff4b7e  # 0.2.2 (168 traps; capped-count scan notes)
 
 jobs:
   lint:
@@ -92,10 +92,18 @@ jobs:
             experimental: false
           - label: "release v0.22.1"
             ref: 297552a9d646119871391d202509822cd86330df
+            release: "0.22.1"
             python: "3.14"   # 0.22 declares its pip dependencies for Python >= 3.14
+            experimental: false
+          - label: "release v0.23.1"
+            ref: 3b421578588243f920886e6fe79a6faa87ea026e
+            release: "0.23.1"
+            python: "3.14"
+            installer: uv
             experimental: false
           - label: "main (early warning)"
             ref: main
+            installer: uv
             # Since 2026-09-24 Hermes main declares its pip dependencies only for
             # Python >= 3.14 (older interpreters get them from its own locked
             # toolchain), so an editable pip install needs 3.14 here.
@@ -126,12 +134,27 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      # Hermes blocks wheel builds outside Nix, so `pip install git+...` (and the
-      # upstream plugin-validate action that uses it) fails. Editable install works.
+      # Hermes reads its version from the release tags merged into HEAD, and a checkout
+      # pinned by SHA has none: it then reports "unknown", which every requires_hermes
+      # range accepts. Tag the pinned commit so this lane really tests the range in
+      # plugin.yaml (0.2.0 shipped "<0.23" green here while 0.23.1 refused to load it).
+      - name: Mark the pinned release so Hermes reports its version
+        if: ${{ matrix.release }}
+        run: git -C _deps/hermes-agent tag -f "v${{ matrix.release }}"
+
+      # Hermes blocks wheel builds outside Nix, so `pip install git+...` fails; an editable
+      # install works. From 0.23 Hermes pins Pillow 13 while its browser-harness dependency
+      # pins Pillow 12, and reconciles them in its own [tool.uv] overrides, which pip cannot
+      # read: those lanes install with uv, run from the Hermes checkout so the overrides apply.
       - name: Install Hermes + deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ./_deps/hermes-agent
+          if [ "${{ matrix.installer }}" = "uv" ]; then
+            python -m pip install uv
+            (cd _deps/hermes-agent && uv pip install --python "$(command -v python)" -e .)
+          else
+            python -m pip install -e ./_deps/hermes-agent
+          fi
           python -m pip install -e ./_deps/model-serving-minefield
           python -m pip install pytest PyYAML
           python -m pip install -e . --no-deps
@@ -162,7 +185,7 @@ jobs:
           persist-credentials: false
 
       - name: Validate against pinned current Hermes
-        uses: NousResearch/hermes-agent/.github/actions/plugin-validate@99a161531cc7b6ce8d91869666ea19cee0610156
+        uses: NousResearch/hermes-agent/.github/actions/plugin-validate@3b421578588243f920886e6fe79a6faa87ea026e # v0.23.1
         with:
           path: .
-          hermes-ref: 99a161531cc7b6ce8d91869666ea19cee0610156
+          hermes-ref: 3b421578588243f920886e6fe79a6faa87ea026e

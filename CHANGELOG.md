@@ -8,6 +8,17 @@ Every pull request that changes the plugin, its tests or its docs adds a line he
 
 Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). Status: experimental until the owner signs off Gate A on a real install.
 
+### Fixed — loads on Hermes 0.23 (2026-11-15)
+- Hermes 0.23.1 refused to load the plugin ("requires hermes >=0.21,<0.23, running 0.23.1"), so `/minefield` and `hermes minefield` disappeared after a Hermes update. Range widened to `<0.24` after the full suite (351 passed), the hook contract, the real-loader tests, `hermes plugins validate` and Gate A (7/7, real processes) passed on 0.23.1. On 0.23 the modern TUI and the desktop app run plugin commands, so `/minefield` works there again.
+- CI could not have caught it: a Hermes checkout pinned by SHA has no release tag, so Hermes reported its version as "unknown", which any range accepts. The 0.22.1 and new 0.23.1 `hermes-compat` lanes now tag their checkout with its release, and `tests/test_version_range.py` fails if `plugin.yaml` rejects a release CI runs or admits a minor version no blocking lane proves.
+- Hermes 0.23 pins Pillow 13 while its `browser-harness` dependency pins Pillow 12, reconciled only in Hermes's own uv overrides, so `pip install -e` of Hermes fails to resolve. The 0.23.1 and `main` lanes install with uv from the Hermes checkout; the `main` early-warning lane had been red since late October for this reason. `hermes-admission` moves to Hermes 0.23.1.
+
+### Fixed — the chat Doctor never runs without `--yes` (2026-11-15)
+- The menu says the full Doctor sends nothing until `--yes`, but the guard asked only on single-slot or unknown-concurrency servers. On a server reporting several slots (llama.cpp with parallel slots), a bare `/minefield doctor` or `/minefield 5` ran the whole Doctor, dozens of requests, from one chat message. From a chat it now always stops, says what it detected and what to type, and sends nothing to the model. The terminal command keeps its documented rule.
+
+### Changed — core pin (2026-11-15)
+- CI and `scripts/dev_setup.sh` test against core `fb3acb1` (0.2.2, 168 traps). `dev_setup.sh` still defaulted to a 0.2.0 commit that the plugin's own `>=0.2.1` requirement rejects, which skipped the `guide` and `scan` tests in a fresh dev environment.
+
 ### Changed: neutral test fixtures (2026-11-02)
 - Redaction and guard tests now use `/home/alice` and documentation-range addresses (`203.0.113.x`, TEST-NET-3) as fixtures instead of a real-looking home directory and private-range addresses. Assertions are unchanged.
 

@@ -160,6 +160,8 @@ def run_command(args: Any, *, surface: str = "cli") -> dict[str, Any]:
             model=g("model"),
             yes=bool(g("yes", False)),
             max_requests=g("max_requests"),
+            # In a chat the Doctor never runs on a bare `/minefield doctor` (or `/minefield 5`).
+            confirm_always=surface == "slash",
         )
     if cmd in {"wtf", "incident"}:
         return _guard(run_wtf, window=g("window"), session=g("session"), save=g("save"))
