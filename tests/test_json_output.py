@@ -28,7 +28,7 @@ def test_json_shapes(cmd, keys, tmp_hermes_home, fresh_recorder):
 
 
 def test_json_is_sanitized():
-    out = json.loads(to_json({"ok": True, "text": "x", "note": "token=abc123 at /home/alice/p 10.1.2.3"}))
+    out = json.loads(to_json({"ok": True, "text": "x", "note": "token=abc123 at /home/alice/p 203.0.113.3"}))
     assert out["note"] == "[REDACTED] at [REDACTED_PATH] [REDACTED_IP]"
 
 

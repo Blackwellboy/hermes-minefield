@@ -8,6 +8,9 @@ Every pull request that changes the plugin, its tests or its docs adds a line he
 
 Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). Status: experimental until the owner signs off Gate A on a real install.
 
+### Changed: neutral test fixtures (2026-11-02)
+- Redaction and guard tests now use `/home/alice` and documentation-range addresses (`203.0.113.x`, TEST-NET-3) as fixtures instead of a real-looking home directory and private-range addresses. Assertions are unchanged.
+
 ### Added — a bare `/minefield` asks instead of listing (2026-10-23)
 - Where Hermes can ask (`ctx.ask_choice`: buttons in Telegram, Discord and Slack chats, the clarify panel in a CLI, TUI or desktop session), `/minefield` on its own asks you to pick a menu item and runs it exactly as `/minefield <number>`, so every guard still applies. Each option says what it touches. The full Doctor asks once more before it sends anything (the pick stands in for `--yes`; "Not now" sends nothing), and a symptom lookup, which needs words, says what to type. On a Hermes without `ask_choice`, on a surface that cannot ask, or when the question is dismissed or times out, you get the numbered list as before; `/minefield menu` always lists. A failing picker falls back to the list too, never to an error in the chat.
 

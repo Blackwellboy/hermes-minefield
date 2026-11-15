@@ -47,4 +47,4 @@ def test_candidate_never_assigns_trap_number():
 
 
 def test_home_paths_redacted():
-    assert "/home/lagzilla" not in redact_text("see /home/lagzilla/secret/file.txt")
+    assert "/home/alice" not in redact_text("see /home/alice/secret/file.txt")
