@@ -8,6 +8,9 @@ Every pull request that changes the plugin, its tests or its docs adds a line he
 
 Implements `docs/IMPROVEMENT_PLAN.md` (review of 0.1.0 against Hermes 0.21.x). Status: experimental until the owner signs off Gate A on a real install.
 
+### Changed: secret scan and ignore rules (2026-11-22)
+- CI gains a `secret-scan` job (checksum-pinned gitleaks, values redacted) over the commits in each push or pull request, with `.gitleaks.toml` allowlisting fake-credential fixtures. `.gitignore` gains rules for model weights, caches and secret/auth/session files. No plugin behaviour changes.
+
 ### Changed: neutral test fixtures (2026-11-02)
 - Redaction and guard tests now use `/home/alice` and documentation-range addresses (`203.0.113.x`, TEST-NET-3) as fixtures instead of a real-looking home directory and private-range addresses. Assertions are unchanged.
 
