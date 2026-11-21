@@ -80,7 +80,7 @@ Loop detection mirrors Hermes's own tool-loop guardrails: polling tools such as 
 Requires Hermes `>=0.21,<0.23`, the range CI proves (see "Compatibility" below).
 
 ```bash
-# 1) Minefield (not on PyPI) at the version CI tests against
+# 1) The Minefield core, from PyPI (the same package `pipx install model-serving-minefield` installs)
 pip install "model-serving-minefield>=0.2.1,<0.3"
 
 # 2) The plugin, pinned to a release commit

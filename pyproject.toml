@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Blackwellboy" }]
 dependencies = [
-  # Not on PyPI; pinned to the SHA CI tests against (see plugin.yaml).
+  # From PyPI; CI also tests the exact core commit pinned in .github/workflows/ci.yml.
   "model-serving-minefield>=0.2.1,<0.3",
 ]
 
