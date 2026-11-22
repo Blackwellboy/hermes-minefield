@@ -202,15 +202,8 @@ def handle_cli(args: Any) -> dict[str, Any]:
     return run_command(args, surface="cli")
 
 
-def slash_result(raw_args: str) -> dict[str, Any]:
-    """Parse + run a slash command; returns the structured result."""
-    raw = (raw_args or "").strip()
-    if not raw:
-        return {"ok": True, "text": menu.render()}
-    try:
-        parts = shlex.split(raw)
-    except ValueError:
-        parts = raw.split()
+def _run_parts(parts: list[str]) -> dict[str, Any]:
+    """Parse + run one slash command given its words (the menu's picks come through here too)."""
     if parts:
         parts[0] = parts[0].lower()
     # `/minefield 3 blank replies` runs item 3 exactly as `/minefield guide blank replies`.
@@ -230,10 +223,31 @@ def slash_result(raw_args: str) -> dict[str, Any]:
     return result
 
 
-def handle_slash(raw_args: str) -> str:
+def slash_result(raw_args: str, *, ask: menu.Asker | None = None) -> dict[str, Any]:
+    """Parse + run a slash command; returns the structured result.
+
+    ``ask`` is ``ctx.ask_choice`` where this Hermes has it: a bare ``/minefield`` then asks the
+    user to pick an item instead of listing them. Without it, or when nothing is picked, the
+    numbered text menu is the answer, as before (``/minefield menu`` always lists).
+    """
+    raw = (raw_args or "").strip()
+    if not raw:
+        if ask is not None:
+            picked = menu.interactive(ask, _run_parts)
+            if picked is not None:
+                return picked
+        return {"ok": True, "text": menu.render()}
+    try:
+        parts = shlex.split(raw)
+    except ValueError:
+        parts = raw.split()
+    return _run_parts(parts)
+
+
+def handle_slash(raw_args: str, *, ask: menu.Asker | None = None) -> str:
     """Hermes slash-command handler: ``/minefield <args>`` → text."""
     try:
-        return slash_result(raw_args).get("text", "")
+        return slash_result(raw_args, ask=ask).get("text", "")
     except Exception:  # last line of defence — never raise into the chat
         logger.debug("minefield slash dispatch failed", exc_info=True)
         return "minefield: internal error. Run with HERMES_PLUGINS_DEBUG=1 for details."
